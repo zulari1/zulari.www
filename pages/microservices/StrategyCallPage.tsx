@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { motion, AnimatePresence, animate } from 'framer-motion';
 import { ICONS } from '../../constants';
@@ -24,14 +25,8 @@ const initialFormData: AIStrategyFormData = {
 
 const MotionDiv = motion.div as any;
 
-// --- Reusable Form Components ---interface FormCardProps {
-  title: string;
-  children: ReactNode;
-  className?: string;
-}
-
-
-const FormCard: React.FC<FormCardProps> = ({ title, children, className }) => (
+// --- Reusable Form Components ---
+const FormCard: React.FC<{ title: string, children: ReactNode, className?: string }> = ({ title, children, className }) => (
     <div className={`bg-dark-bg border border-dark-border rounded-xl p-6 space-y-4 ${className}`}>
         <h3 className="font-bold text-white flex items-center gap-2 text-lg">{title}</h3>
         {children}
@@ -59,14 +54,9 @@ const SelectField: React.FC<React.SelectHTMLAttributes<HTMLSelectElement> & { op
             <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
         </div>
     </div>
-);interface RadioCardGroupProps {
-  options: string[];
-  value: string;
-  onChange: (val: string) => void;
-}
+);
 
-
-const RadioCardGroup: React.FC<RadioCardGroupProps> = ({ options, value, onChange }) => (
+const RadioCardGroup: React.FC<{ options: string[], value: string, onChange: (val: string) => void }> = ({ options, value, onChange }) => (
     <div className="grid grid-cols-2 gap-3">
         {options.map(opt => (
             <motion.label 
@@ -104,13 +94,8 @@ const CheckboxCardGroup: React.FC<{ options: {key: string, label: string}[], val
 );
 
 
-// --- Form Step Components ---interface Step1Props {
-  data: AIStrategyFormData;
-  update: Function;
-}
-
-
-const Step1: React.FC<Step1Props> = ({ data, update }) => (
+// --- Form Step Components ---
+const Step1: React.FC<{ data: AIStrategyFormData, update: Function }> = ({ data, update }) => (
     <div className="space-y-6">
         <FormCard title="📋 Step 1: Tell Us About Your Business">
             <p className="text-sm text-dark-text-secondary -mt-3">This helps us analyze better.</p>
@@ -214,13 +199,9 @@ const Step2: React.FC<{ data: AIStrategyFormData, update: Function, errors: any,
             </FormCard>
         </div>
     );
-};interface Step3Props {
-  data: AIStrategyFormData;
-  update: Function;
-}
+};
 
-
-const Step3: React.FC<Step3Props> = ({ data, update }) => (
+const Step3: React.FC<{ data: AIStrategyFormData, update: Function }> = ({ data, update }) => (
     <div className="space-y-6">
         <FormCard title="🚀 Step 3: Your Goals & Vision">
             <div>
@@ -249,13 +230,8 @@ const Step3: React.FC<Step3Props> = ({ data, update }) => (
             </div>
         </FormCard>
     </div>
-);interface Step4Props {
-  data: AIStrategyFormData;
-  update: Function;
-}
-
-
-const Step4: React.FC<Step4Props> = ({ data, update }) => {
+);
+const Step4: React.FC<{ data: AIStrategyFormData, update: Function }> = ({ data, update }) => {
     const decisionMakersOptions = [
         {key: "me", label: "Just me"}, {key: "partner", label: "Partner/Co-founder"}, {key: "it_team", label: "IT Team"},
         {key: "ops_manager", label: "Operations Manager"}, {key: "board", label: "Board/Investors"}
@@ -420,12 +396,9 @@ const MultiStepForm: React.FC<{ initialData: AIStrategyFormData, onComplete: (da
             </div>
         </form>
     );
-};interface ProcessingViewProps {
-  email: string;
-}
+};
 
-
-const ProcessingView: React.FC<ProcessingViewProps> = ({ email }) => {
+const ProcessingView: React.FC<{ email: string }> = ({ email }) => {
     const checklist = [
         "Business information processed", "Website analysis complete (15 pages crawled)", "Industry benchmarking finished",
         "AI opportunity scoring in progress...", "Custom recommendations generated", "ROI projections calculated", "Implementation roadmap created"

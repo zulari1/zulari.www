@@ -12,15 +12,9 @@ import InfoTooltip from '../components/InfoTooltip';
 type ResearchMode = 'competitor_analysis' | 'website_audit' | 'keyword_research';
 type JobStatus = 'idle' | 'queued' | 'processing' | 'completed' | 'failed';
 
-// --- FORM COMPONENTS (as per new blueprint) ---interface FormFieldProps {
-  label: string;
-  children: React.ReactNode;
-  required?: boolean;
-  hint?: string;
-}
+// --- FORM COMPONENTS (as per new blueprint) ---
 
-
-const FormField: React.FC<FormFieldProps> = ({ label, children, required, hint }) => (
+const FormField: React.FC<{ label: string, children: React.ReactNode, required?: boolean, hint?: string }> = ({ label, children, required, hint }) => (
     <div>
         <label className="block text-sm font-medium text-dark-text-secondary mb-1.5">
             {label} {required && <span className="text-red-400">*</span>}
@@ -50,14 +44,9 @@ const CheckboxGroup: React.FC<{ options: string[], selectedValues: string[], onC
             </label>
         ))}
     </div>
-);interface CompetitorAnalysisFormProps {
-  formState: any;
-  setFormState: any;
-  isBusy: boolean;
-}
+);
 
-
-const CompetitorAnalysisForm: React.FC<CompetitorAnalysisFormProps> = ({ formState, setFormState, isBusy }) => {
+const CompetitorAnalysisForm: React.FC<{ formState: any, setFormState: any, isBusy: boolean }> = ({ formState, setFormState, isBusy }) => {
     const handleChange = (field: string, value: any) => setFormState((prev: any) => ({ ...prev, [field]: value }));
     const handleAdditionalCompetitorChange = (index: number, value: string) => {
         const newCompetitors = [...formState.additionalCompetitors];
@@ -99,14 +88,9 @@ const CompetitorAnalysisForm: React.FC<CompetitorAnalysisFormProps> = ({ formSta
             </FormField>
         </div>
     );
-};interface WebsiteAuditFormProps {
-  formState: any;
-  setFormState: any;
-  isBusy: boolean;
-}
+};
 
-
-const WebsiteAuditForm: React.FC<WebsiteAuditFormProps> = ({ formState, setFormState, isBusy }) => {
+const WebsiteAuditForm: React.FC<{ formState: any, setFormState: any, isBusy: boolean }> = ({ formState, setFormState, isBusy }) => {
     const handleChange = (field: string, value: any) => setFormState((prev: any) => ({ ...prev, [field]: value }));
     const handleGoalChange = (goal: string) => {
         const newGoals = formState.primaryGoals.includes(goal) ? formState.primaryGoals.filter((g: string) => g !== goal) : [...formState.primaryGoals, goal];
@@ -126,14 +110,9 @@ const WebsiteAuditForm: React.FC<WebsiteAuditFormProps> = ({ formState, setFormS
             </FormField>
         </div>
     );
-};interface KeywordResearchFormProps {
-  formState: any;
-  setFormState: any;
-  isBusy: boolean;
-}
+};
 
-
-const KeywordResearchForm: React.FC<KeywordResearchFormProps> = ({ formState, setFormState, isBusy }) => {
+const KeywordResearchForm: React.FC<{ formState: any, setFormState: any, isBusy: boolean }> = ({ formState, setFormState, isBusy }) => {
     const handleChange = (field: string, value: any) => setFormState((prev: any) => ({ ...prev, [field]: value }));
 
     return (
@@ -151,12 +130,9 @@ const KeywordResearchForm: React.FC<KeywordResearchFormProps> = ({ formState, se
             </FormField>
         </div>
     );
-};interface ProcessingStateProps {
-  message: string;
-}
+};
 
-
-const ProcessingState: React.FC<ProcessingStateProps> = ({ message }) => {
+const ProcessingState: React.FC<{ message: string }> = ({ message }) => {
     const stages = ["SERP Data Collection", "Competitor Page Crawling", "AI Intelligence Analysis", "Report Generation"];
     let currentStageIndex = -1;
     if (message.includes("SERP") || message.includes("Submitting")) currentStageIndex = 0;

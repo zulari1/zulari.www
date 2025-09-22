@@ -21,12 +21,8 @@ const Card: React.FC<{ children: ReactNode; className?: string, element?: 'div' 
             {children}
         </Component>
     );
-};interface SpinnerProps {
-  message?: string;
-}
-
-
-const Spinner: React.FC<SpinnerProps> = ({ message }) => (
+};
+const Spinner: React.FC<{ message?: string }> = ({ message }) => (
     <div className="flex items-center justify-center gap-2">
         <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -34,14 +30,9 @@ const Spinner: React.FC<SpinnerProps> = ({ message }) => (
         </svg>
         {message && <span>{message}</span>}
     </div>
-);interface AnimatedCounterProps {
-  value: number;
-  prefix?: string;
-  suffix?: string;
-}
+);
 
-
-const AnimatedCounter: React.FC<AnimatedCounterProps> = ({ value, prefix = "", suffix = "" }) => {
+const AnimatedCounter: React.FC<{ value: number, prefix?: string, suffix?: string }> = ({ value, prefix = "", suffix = "" }) => {
     const nodeRef = useRef<HTMLSpanElement>(null);
 
     useEffect(() => {
@@ -74,12 +65,9 @@ const TypingIndicator: React.FC = () => (
 );
 
 
-// --- Tab Components ---interface LiveChatTabProps {
-  settings: WebAIConfigPayload | null;
-}
+// --- Tab Components ---
 
-
-const LiveChatTab: React.FC<LiveChatTabProps> = ({ settings }) => {
+const LiveChatTab: React.FC<{ settings: WebAIConfigPayload | null }> = ({ settings }) => {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -222,12 +210,9 @@ const ImpactDashboard = () => (
         </div>
         <p className="text-xs text-amber-400 text-center mt-3 font-semibold">"Competitors convert 3.4x more visitors using AI"</p>
     </div>
-);interface AIIntelligenceMeterProps {
-  iq: number; iqChange: number;
-}
+);
 
-
-const AIIntelligenceMeter: React.FC<AIIntelligenceMeterProps> = ({ iq, iqChange }) => {
+const AIIntelligenceMeter: React.FC<{iq: number; iqChange: number}> = ({ iq, iqChange }) => {
     const milestones = [{iq: 40, label: 'Q&A'}, {iq: 60, label: 'Booking'}, {iq: 80, label: 'Analytics'}, {iq: 95, label: 'Genius'}];
     return (
         <div className="bg-dark-bg border border-dark-border rounded-xl p-4 relative overflow-hidden">

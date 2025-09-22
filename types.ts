@@ -657,6 +657,23 @@ export interface GoogleSheetsValuesResponse {
   values: any[][];
 }
 
+// --- Integrations ---
+export interface Integration {
+  user_email: string;
+  service_name: string;
+  integration_type: 'Gmail' | 'Calendar';
+  account_email: string;
+  token_id: string;
+  token_store_hint: string;
+  status: 'Connected' | 'Disconnected' | 'Expired' | 'Error';
+  scopes: string;
+  connected_date: string;
+  expires_at: string;
+  last_verified: string;
+  notes: string;
+}
+
+
 // --- CRM Automation Types ---
 export type CRMPlatform = 'shopify' | 'woocommerce' | 'bigcommerce' | 'other';
 export type CRMEventType = 'signup' | 'login' | 'abandoned_cart';

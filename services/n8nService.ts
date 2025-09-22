@@ -1,9 +1,11 @@
 // FIX: Add missing support-related types
 // FIX: Add missing WebAIHistoryItem type
-import { ResearchReport, SalesInboxStats, SalesMeetingStats, SalesPipelineMetrics, SalesMaterials, SalesPendingApproval, GoogleSheetsValuesResponse, SalesAITrainingPayload, Lead, ChatCommandPayload, CustomSolutionPayload, WebAIKnowledgeSearchQuery, CRMCredentialsPayload, CRMEvent, InfluencerResearchRequest, InfluencerResearchResponse, AgentSettingsPayload, ScrapeResponse, DashboardKpis, ContactFormPayload, AiReadinessAuditRequest, JobStatusResponse, MiniLeadsForm, LeadGenStartResponse, StrategyCallForm, StrategyCallStartResponse, SimulatorSignup, SimulatorStartResponse, WebsiteReportRequest, WebsiteReportStartResponse, EmailRewriteInitialRequest, EmailTemplate, EmailRewriteDraftData, EmailRewriteInitialResponse, ChatMessage, LeadGenCampaignPerformance, RawLead, MappedLeadForSheet, SupportConversation, SupportStats, SupportSettings, SupportSettingsPayload, SupportAITrainingPayload, SupportPerformanceTrend, WebAIConfigPayload, WebAITrainingPayload, WebAILogEntry, WebAIAnalyticsData, WebAIEmbedData, WebAITrainingResponse, WebAIConfigResponse, PreviousAuditReport, WebAIHistoryItem, WebsiteReportHtmlResponse, WebsiteReportHistoryItem, AIStrategyFormData, SimulatorDayResponse, DashboardUser, RoiJob, MainDashboardData, RecentEvent, SimulatorJob, WebAITrainingDoc, WebAITrainingAckResponse, UnifiedTrainingDoc, AddTrainingDocResponse } from '../types';
+// FIX: Add Integration type to imports.
+import { ResearchReport, SalesInboxStats, SalesMeetingStats, SalesPipelineMetrics, SalesMaterials, SalesPendingApproval, GoogleSheetsValuesResponse, SalesAITrainingPayload, Lead, ChatCommandPayload, CustomSolutionPayload, WebAIKnowledgeSearchQuery, CRMCredentialsPayload, CRMEvent, InfluencerResearchRequest, InfluencerResearchResponse, AgentSettingsPayload, ScrapeResponse, DashboardKpis, ContactFormPayload, AiReadinessAuditRequest, JobStatusResponse, MiniLeadsForm, LeadGenStartResponse, StrategyCallForm, StrategyCallStartResponse, SimulatorSignup, SimulatorStartResponse, WebsiteReportRequest, WebsiteReportStartResponse, EmailRewriteInitialRequest, EmailTemplate, EmailRewriteDraftData, EmailRewriteInitialResponse, ChatMessage, LeadGenCampaignPerformance, RawLead, MappedLeadForSheet, SupportConversation, SupportStats, SupportSettings, SupportSettingsPayload, SupportAITrainingPayload, SupportPerformanceTrend, WebAIConfigPayload, WebAITrainingPayload, WebAILogEntry, WebAIAnalyticsData, WebAIEmbedData, WebAITrainingResponse, WebAIConfigResponse, PreviousAuditReport, WebAIHistoryItem, WebsiteReportHtmlResponse, WebsiteReportHistoryItem, AIStrategyFormData, SimulatorDayResponse, DashboardUser, RoiJob, MainDashboardData, RecentEvent, SimulatorJob, WebAITrainingDoc, WebAITrainingAckResponse, UnifiedTrainingDoc, AddTrainingDocResponse, Integration } from '../types';
 // FIX: Added VITE_WEBHOOK_EMAIL_PERSONALIZE_BATCH to the import list.
 // FIX: Add missing VITE_WEBHOOK_EMAIL_TEMPLATES, VITE_WEBHOOK_LEAD_HUNT, and VITE_WEBHOOK_LEAD_RESEARCH variables.
-import { VITE_WEBHOOK_RESEARCH_AI, VITE_GMAIL_CLIENT_ID, VITE_GOOGLE_API_KEY, VITE_SHEET_ID, VITE_WEBHOOK_SALES_AI_TRAIN, VITE_SUPPORT_SHEET_ID, VITE_WEBHOOK_SUPPORT_SETTINGS_SAVE, VITE_WEBHOOK_SUPPORT_AI_TRAIN, VITE_LEADGEN_SHEET_ID, VITE_DEEP_RESEARCH_SHEET_ID, VITE_PERFORMANCE_TRENDS_SHEET_ID, VITE_PERFORMANCE_TRENDS_SHEET_GID, VITE_WEBHOOK_LEAD_RESEARCH_AI_CHAT, VITE_WEBHOOK_CUSTOM_SOLUTION, VITE_WEBHOOK_CUSTOM_SOLUTION_AI, VITE_WEBHOOK_GOOGLE_OAUTH, VITE_WEBHOOK_CRM_SAVE_CREDS, VITE_WEBHOOK_CRM_FETCH_EVENTS, VITE_WEBHOOK_INFLUENCER_RESEARCH, VITE_WEBHOOK_DASHBOARD_KPI, VITE_WEBHOOK_KNOWLEDGE_BASE, VITE_WEBHOOK_AI_ASSISTANT, VITE_WEBHOOK_CONTACT_FORM, VITE_WEBHOOK_AI_READINESS_AUDIT_START, VITE_WEBHOOK_JOB_STATUS, VITE_WEBHOOK_LEAD_GEN_START, VITE_WEBHOOK_STRATEGY_CALL_START, VITE_WEBHOOK_SIMULATOR_START, VITE_WEBHOOK_WEBSITE_REPORT, VITE_WEBHOOK_AI_EMAIL_REWRITE, VITE_EMAIL_TEMPLATES_SHEET_ID, VITE_WEBHOOK_LEADS_APPEND, VITE_WEBHOOK_LEADGEN_SETTINGS, VITE_WEBHOOK_EMAIL_PERSONALIZE, VITE_WEBHOOK_EMAIL_PERSONALIZE_BATCH, VITE_WEBHOOK_OUTREACH_SCHEDULE, VITE_WEBHOOK_EMAIL_PERSONALIZE_SCHEDULE, VITE_WEBHOOK_BATCH_STATUS, VITE_WEBHOOK_LEAD_UPDATE_STATUS, VITE_WEBHOOK_EMAIL_PERSONALIZE_UNIVERSAL_SCHEDULE, VITE_WEBHOOK_OUTREACH_STATUS, VITE_WEBHOOK_WEB_AI_CONFIG, VITE_WEBHOOK_WEB_AI_TRAIN, VITE_WEBHOOK_EMBED_REQUEST, VITE_WEBHOOK_WEB_AI_ANALYTICS, VITE_WEBHOOK_WEB_AI_LOGS, VITE_WEBHOOK_WEB_AI_STATUS, VITE_WEBHOOK_WEB_AI_SEARCH, VITE_WEB_AI_SHEET_ID, VITE_WEBHOOK_GMAIL, VITE_WEBHOOK_ANALYZER_AI, VITE_PREVIOUS_AUDITS_SHEET_ID, VITE_WEBHOOK_EMAIL_TEMPLATES, VITE_WEBHOOK_LEAD_HUNT, VITE_WEBHOOK_LEAD_RESEARCH, VITE_RESEARCH_SHEET_ID, VITE_WEBHOOK_AI_STRATEGY_CALL, VITE_WEBHOOK_AI_STRATEGY_SLOTS, VITE_WEBHOOK_SIMULATOR_CREATE, VITE_WEBHOOK_SIMULATOR_DAY, VITE_WEBHOOK_SIMULATOR_GET_SHEET, VITE_MICROSERVICES_DASHBOARD_SHEET_ID, VITE_MICROSERVICES_ROI_SHEET_ID, VITE_CUSTOM_SOLUTIONS_SHEET_ID, VITE_MAIN_DASHBOARD_SHEET_ID, VITE_WEB_AI_TRAINING_DATA_SHEET_ID, VITE_WEBHOOK_TRAIN_REPLIER } from '../env';
+// FIX: Add VITE_INTEGRATIONS_SHEET_ID to imports.
+import { VITE_WEBHOOK_RESEARCH_AI, VITE_GMAIL_CLIENT_ID, VITE_GOOGLE_API_KEY, VITE_SHEET_ID, VITE_WEBHOOK_SALES_AI_TRAIN, VITE_SUPPORT_SHEET_ID, VITE_WEBHOOK_SUPPORT_SETTINGS_SAVE, VITE_WEBHOOK_SUPPORT_AI_TRAIN, VITE_LEADGEN_SHEET_ID, VITE_DEEP_RESEARCH_SHEET_ID, VITE_PERFORMANCE_TRENDS_SHEET_ID, VITE_PERFORMANCE_TRENDS_SHEET_GID, VITE_WEBHOOK_LEAD_RESEARCH_AI_CHAT, VITE_WEBHOOK_CUSTOM_SOLUTION, VITE_WEBHOOK_CUSTOM_SOLUTION_AI, VITE_WEBHOOK_GOOGLE_OAUTH, VITE_WEBHOOK_CRM_SAVE_CREDS, VITE_WEBHOOK_CRM_FETCH_EVENTS, VITE_WEBHOOK_INFLUENCER_RESEARCH, VITE_WEBHOOK_DASHBOARD_KPI, VITE_WEBHOOK_KNOWLEDGE_BASE, VITE_WEBHOOK_AI_ASSISTANT, VITE_WEBHOOK_CONTACT_FORM, VITE_WEBHOOK_AI_READINESS_AUDIT_START, VITE_WEBHOOK_JOB_STATUS, VITE_WEBHOOK_LEAD_GEN_START, VITE_WEBHOOK_STRATEGY_CALL_START, VITE_WEBHOOK_SIMULATOR_START, VITE_WEBHOOK_WEBSITE_REPORT, VITE_WEBHOOK_AI_EMAIL_REWRITE, VITE_EMAIL_TEMPLATES_SHEET_ID, VITE_WEBHOOK_LEADS_APPEND, VITE_WEBHOOK_LEADGEN_SETTINGS, VITE_WEBHOOK_EMAIL_PERSONALIZE, VITE_WEBHOOK_EMAIL_PERSONALIZE_BATCH, VITE_WEBHOOK_OUTREACH_SCHEDULE, VITE_WEBHOOK_EMAIL_PERSONALIZE_SCHEDULE, VITE_WEBHOOK_BATCH_STATUS, VITE_WEBHOOK_LEAD_UPDATE_STATUS, VITE_WEBHOOK_EMAIL_PERSONALIZE_UNIVERSAL_SCHEDULE, VITE_WEBHOOK_OUTREACH_STATUS, VITE_WEBHOOK_WEB_AI_CONFIG, VITE_WEBHOOK_WEB_AI_TRAIN, VITE_WEBHOOK_EMBED_REQUEST, VITE_WEBHOOK_WEB_AI_ANALYTICS, VITE_WEBHOOK_WEB_AI_LOGS, VITE_WEBHOOK_WEB_AI_STATUS, VITE_WEBHOOK_WEB_AI_SEARCH, VITE_WEB_AI_SHEET_ID, VITE_WEBHOOK_GMAIL, VITE_WEBHOOK_ANALYZER_AI, VITE_PREVIOUS_AUDITS_SHEET_ID, VITE_WEBHOOK_EMAIL_TEMPLATES, VITE_WEBHOOK_LEAD_HUNT, VITE_WEBHOOK_LEAD_RESEARCH, VITE_RESEARCH_SHEET_ID, VITE_WEBHOOK_AI_STRATEGY_CALL, VITE_WEBHOOK_AI_STRATEGY_SLOTS, VITE_WEBHOOK_SIMULATOR_CREATE, VITE_WEBHOOK_SIMULATOR_DAY, VITE_WEBHOOK_SIMULATOR_GET_SHEET, VITE_MICROSERVICES_DASHBOARD_SHEET_ID, VITE_MICROSERVICES_ROI_SHEET_ID, VITE_CUSTOM_SOLUTIONS_SHEET_ID, VITE_MAIN_DASHBOARD_SHEET_ID, VITE_WEB_AI_TRAINING_DATA_SHEET_ID, VITE_WEBHOOK_TRAIN_REPLIER, VITE_INTEGRATIONS_SHEET_ID } from '../env';
 import { computeLeadFields } from '../utils/leadUtils';
 // FIX: Use native Date for date subtraction as 'subDays' is not available.
 import { format } from 'date-fns';
@@ -268,11 +270,12 @@ export const fetchPreviousAudits = async (userEmail: string): Promise<PreviousAu
 };
 
 // --- Google OAuth Service ---
-export const postGoogleAuthCode = async (code: string): Promise<any> => {
+// FIX: Changed `code: string` to `payload: any` to accept the full object from the callback page.
+export const postGoogleAuthCode = async (payload: any): Promise<any> => {
     const response = await fetch(VITE_WEBHOOK_GOOGLE_OAUTH, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify(payload),
     });
     return handleResponse(response);
 };
@@ -607,6 +610,14 @@ export const fetchCoreServiceData = (sheetId: string, range: string, userEmail: 
                     return obj;
                 });
         });
+
+// --- Integrations ---
+// FIX: Add missing fetchIntegrations function.
+export const fetchIntegrations = async (): Promise<Integration[]> => {
+    const values = await getFromGoogleSheet(VITE_INTEGRATIONS_SHEET_ID, 'Sheet1');
+    const allIntegrations = mapSheetValuesToObjects<Integration>(values);
+    return allIntegrations;
+};
 
 // --- CRM ---
 export const fetchCRMEvents = (payload: CRMCredentialsPayload): Promise<CRMEvent[]> => postJson(VITE_WEBHOOK_CRM_FETCH_EVENTS, payload);

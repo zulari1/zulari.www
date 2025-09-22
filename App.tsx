@@ -47,12 +47,10 @@ import ContactPage from './pages/resources/ContactPage';
 // Other Pages
 import OAuthCallbackPage from './pages/OAuthCallbackPage';
 import AiAssistant from './components/AiAssistant';
-import { useAuth } from './hooks/useAuth';interface ProtectedRouteProps {
-  children: React.ReactNode;
-}
+import { useAuth } from './hooks/useAuth';
+import { IntegrationsProvider } from './hooks/useIntegrations';
 
-
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+const ProtectedRoute: React.FC<{children: React.ReactNode}> = ({ children }) => {
     const { loading, hasAccess } = useAuth();
     const navigate = useNavigate();
     const [ready, setReady] = useState(false);
@@ -154,10 +152,12 @@ const MainLayout: React.FC = () => {
 const App: React.FC = () => {
     return (
         <HashRouter>
-            <Routes>
-                <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
-                <Route path="/*" element={<MainLayout />} />
-            </Routes>
+            <IntegrationsProvider>
+                <Routes>
+                    <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
+                    <Route path="/*" element={<MainLayout />} />
+                </Routes>
+            </IntegrationsProvider>
         </HashRouter>
     );
 };
