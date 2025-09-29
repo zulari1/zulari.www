@@ -138,3 +138,22 @@ export function computeSalesAgentIQ(docs: UnifiedTrainingDoc[]): number {
     // Scale the points to a percentage
     return Math.round(Math.min(100, (totalPoints / maxPoints) * 100));
 }
+// FIX: Add missing calculateSupportAI_IQ function
+export function calculateSupportAI_IQ(docs: UnifiedTrainingDoc[], escalationRules: any, baseIQ = 20): { total_iq: number } {
+  const weights: { [key: string]: number } = {
+    'FAQ': 30, 'Policy': 20, 'SOP': 20, 'Company DNA': 15,
+    'Chat Scripts': 10, 'Other': 5,
+  };
+  const docPoints = docs.reduce((total, doc) => {
+    const weight = weights[doc.doc_type] || 5;
+    const completeness = doc.doc_status === 'Complete' ? 1 : (doc.doc_status === 'Partial' ? 0.5 : 0);
+    return total + (weight * completeness);
+  }, 0);
+
+  const maxDocPoints = Object.values(weights).reduce((sum, w) => sum + w, 0);
+  const docScore = maxDocPoints > 0 ? (docPoints / maxDocPoints) * (100 - baseIQ) : 0;
+  
+  const rulesScore = (escalationRules.auto.length + escalationRules.manual.length > 3) ? 10 : 0; // Bonus for having rules
+
+  return { total_iq: Math.min(100, Math.round(baseIQ + docScore + rulesScore)) };
+}

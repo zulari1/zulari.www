@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { animate } from 'framer-motion';
-import { SupportKpis } from '../../utils/supportUtils';
+// FIX: Corrected import from `supportUtils` to `types` where the interface is defined.
+import { SupportKpis } from '../../types';
 
 const AnimatedCounter: React.FC<{ value: number, suffix?: string }> = ({ value, suffix = '' }) => {
     const [animatedValue, setAnimatedValue] = useState(0);

@@ -1,10 +1,10 @@
 
 
-import React, { useState, useEffect, useCallback, ReactNode, useRef } from 'react';
+import React, { useState, useEffect, FormEvent, useRef, ReactNode } from 'react';
 import { motion, AnimatePresence, animate } from 'framer-motion';
 import { ICONS } from '../../constants';
 import * as n8n from '../../services/n8nService';
-import { AIStrategyFormData } from '../../types';
+import { AIStrategyFormData, CustomSolutionMetric, CustomSolutionStakeholder, CustomSolutionPayload } from '../../types';
 import SubPageHeader from '../../components/SubPageHeader';
 import ActionNotification from '../../components/ActionNotification';
 import { safeNum } from '../../utils/safeUtils';
@@ -253,8 +253,9 @@ const Step4: React.FC<{ data: AIStrategyFormData, update: Function }> = ({ data,
                 <div>
                     <label className="text-sm font-medium text-dark-text-secondary mb-2 block">🏢 Team Breakdown</label>
                     <div className="grid grid-cols-3 gap-2">
-                        {Object.keys(data.teamBreakdown).map(team => (
-                            <InputField key={team} type="number" placeholder={team.charAt(0).toUpperCase() + team.slice(1)} value={data.teamBreakdown[team as keyof typeof data.teamBreakdown] || ''} onChange={e => handleTeamBreakdownChange(team as keyof typeof data.teamBreakdown, e.target.value)} />
+                        {/* FIX: Explicitly cast the mapped 'team' variable to the correct string literal union type. This resolves errors with string methods and function argument compatibility. */}
+                        {(Object.keys(data.teamBreakdown) as (keyof AIStrategyFormData['teamBreakdown'])[]).map(team => (
+                            <InputField key={team} type="number" placeholder={team.charAt(0).toUpperCase() + team.slice(1)} value={data.teamBreakdown[team] || ''} onChange={e => handleTeamBreakdownChange(team, e.target.value)} />
                         ))}
                     </div>
                 </div>

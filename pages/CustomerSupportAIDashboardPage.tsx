@@ -1,191 +1,448 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo, ReactNode } from 'react';
-// FIX: Import 'animate' from framer-motion to resolve reference error.
 import { motion, AnimatePresence, animate } from 'framer-motion';
 import * as supportService from '../services/supportService';
-import * as n8n from '../services/n8nService';
-import { calcKPIs, parseTimestamp } from '../utils/supportUtils';
+import { calculateDashboardMetrics, timeAgo } from '../utils/supportUtils';
 import ActionNotification from '../components/ActionNotification';
-import SupportHero from '../components/support/SupportHero';
-import SupportFiltersBar from '../components/support/SupportFiltersBar';
-import SupportList from '../components/support/SupportList';
-import SupportDetailDrawer from '../components/support/SupportDetailDrawer';
-import SettingsModal from '../components/support/SettingsModal';
-import { SupportRow, Status, Filter, UnifiedTrainingDoc, AddTrainingDocResponse, SupportChaosMetrics, EscalationRules, WebAITrainingDoc } from '../types';
+import { SupportTicket, DashboardMetrics, SupportFilter, UnifiedTrainingDoc, AddTrainingDocResponse, SupportChaosMetrics, EscalationRules, WebAITrainingDoc, GoogleSheetsValuesResponse, SupportKpis, SupportPerformanceMetrics } from '../types';
 import IntegrationBanner from '../components/IntegrationBanner';
+import { ICONS } from '../constants';
+import * as n8n from '../services/n8nService';
+import { calculateSupportAI_IQ } from '../utils/trainingUtils';
+import SupportSettingsModal from '../components/support/SupportSettingsModal';
+import SupportFeedbackModal from '../components/support/SupportFeedbackModal';
+import SupportAIChat from '../components/support/SupportAIChat';
 
-type View = 'inbox' | 'training';
 
+// --- Blueprint-specified Helper Functions ---
+const parseSupportTickets = (apiResponse: GoogleSheetsValuesResponse): SupportTicket[] => {
+  if (!apiResponse || !apiResponse.values) return [];
+  const rows = apiResponse.values;
+  const headers = rows[0];
+  const dataRows = rows.slice(1);
+  
+  return dataRows.map(row => {
+    const obj: any = {};
+    headers.forEach((header, index) => {
+      obj[header.trim()] = row[index] || '';
+    });
+    obj._messageId = obj['Message ID'];
+    obj._timestamp = new Date(obj['Timestamp']);
+    obj._isEscalated = obj['Escalation Flag'] === 'TRUE';
+    obj._needsAction = ['Pending', 'Needs Iteration'].includes(obj['Approval Status']);
+    
+    // Add mock sentiment/confidence for UI
+    obj._sentiment = 'Frustrated';
+    obj._confidence = 92;
+
+    return obj as SupportTicket;
+  });
+};
+
+const getPriority = (conversation: SupportTicket): number => {
+  if (conversation._isEscalated) return 3;
+  if (conversation['Approval Status'] === 'Pending') return 2;
+  if (conversation['Approval Status'] === 'Needs Iteration') return 2;
+  return 1;
+};
+
+// --- Sub-components for the new Dashboard ---
 const AnimatedCounter: React.FC<{ value: number, prefix?: string, suffix?: string, decimals?: number }> = ({ value, prefix = '', suffix = '', decimals = 0 }) => {
     const [animatedValue, setAnimatedValue] = useState(0);
 
     useEffect(() => {
         const controls = animate(animatedValue, value, {
-            duration: 1.2,
+            duration: 0.8,
             ease: "easeOut",
             onUpdate: (latest) => setAnimatedValue(latest)
         });
         return () => controls.stop();
-    }, [value, animatedValue]);
+    }, [value]);
 
     return <span>{prefix}{animatedValue.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}{suffix}</span>;
 };
 
-
-// --- New Support AI Training View ---
-const SupportAITrainingView: React.FC = () => {
-    const [docs, setDocs] = useState<UnifiedTrainingDoc[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalDocType, setModalDocType] = useState<WebAITrainingDoc['doc_type']>('FAQ');
-    const [isSavingRules, setIsSavingRules] = useState(false);
-    
-    // Mock Data as per blueprint
-    const chaosMetrics: SupportChaosMetrics = { unread_emails: 124, pending_chats: 32, avg_response_time: 4.5, after_hours_count: 56, latest_complaint_preview: "My order still hasn't arrived...", potential_auto_responses: 75 };
-    const [escalationRules, setEscalationRules] = useState<EscalationRules>({ auto: ['Business hours & location', 'Shipping & return policy', 'Product availability'], manual: ['Refund requests', 'Complaints & angry tone', 'Custom orders'] });
-
-    const fetchData = useCallback(async () => {
-        setLoading(true);
-        try {
-            const allDocs = await n8n.fetchUnifiedTrainingData('alice@store.com');
-            setDocs(allDocs.filter(d => d.agent_name === 'Support AI'));
-        } catch (e: any) {
-            setNotification({ message: `Failed to fetch training data: ${e.message}`, type: 'error' });
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
-
-    const calculateSupportAI_IQ = (docs: UnifiedTrainingDoc[], rules: EscalationRules) => {
-        const iqBreakdown = {
-            faq_count: 0, faq_points: 0, policy_count: 0, policy_points: 0,
-            escalation_setup: 0, esc_pts: 0, total_iq: 0,
-        };
-
-        docs.forEach(doc => {
-            if (doc.doc_type === 'FAQ' && doc.doc_status === 'Complete') {
-                iqBreakdown.faq_count++;
-                iqBreakdown.faq_points += 5;
-            }
-            if (['Policy', 'SOP', 'Company DNA'].includes(doc.doc_type) && doc.doc_status === 'Complete') {
-                iqBreakdown.policy_count++;
-                iqBreakdown.policy_points += 10;
-            }
-        });
-
-        if (rules && (rules.auto.length > 0 || rules.manual.length > 0)) {
-            iqBreakdown.escalation_setup = 1;
-            iqBreakdown.esc_pts = 15;
-        }
-
-        iqBreakdown.total_iq = iqBreakdown.faq_points + iqBreakdown.policy_points + iqBreakdown.esc_pts;
-        return iqBreakdown;
-    };
-    
-    const iqData = useMemo(() => calculateSupportAI_IQ(docs, escalationRules), [docs, escalationRules]);
-
-    const handleOpenModal = (docType: WebAITrainingDoc['doc_type']) => {
-        setModalDocType(docType);
-        setIsModalOpen(true);
-    }
-    
-    const handleSuccess = () => {
-        setIsModalOpen(false);
-        setNotification({message: 'Document added successfully!', type: 'success'});
-        fetchData();
-    }
-    
-     const handleSaveRules = async () => {
-        setIsSavingRules(true);
-        setNotification(null);
-        try {
-            const payload = {
-                user_email: "alice@store.com",
-                agent_name: "Support AI",
-                doc_id: `escalation_rules_${Date.now()}`,
-                doc_name: "Escalation Rules",
-                doc_type: "Policy",
-                doc_status: "Complete",
-                uploaded_date: new Date().toISOString().split('T')[0],
-                last_updated: new Date().toISOString().split('T')[0],
-                content: JSON.stringify(escalationRules)
-            };
-            const response: AddTrainingDocResponse = await n8n.addUnifiedTrainingDoc(payload);
-            if (Array.isArray(response) && response[0]?.status === 'Successfull') {
-                 setNotification({ message: 'Escalation rules saved successfully as a policy document!', type: 'success' });
-                 fetchData();
-            } else {
-                throw new Error('Webhook returned an unexpected response for saving rules.');
-            }
-        } catch (err: any) {
-            setNotification({ message: err.message || 'Failed to save rules.', type: 'error' });
-        } finally {
-            setIsSavingRules(false);
-        }
-    };
-
-    if (loading) {
-        return <div className="text-center p-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary mx-auto"></div></div>;
-    }
-
+const AnalyticsCard: React.FC<{ title: string; value: number; icon: ReactNode; prefix?: string; suffix?: string; decimals?: number }> = ({ title, value, icon, prefix, suffix, decimals }) => {
+    const valueClass = value > 90 ? 'from-green-500/30 to-dark-bg' : value > 70 ? 'from-amber-500/30 to-dark-bg' : 'from-red-500/30 to-dark-bg';
     return (
-        <div className="space-y-6">
-            {notification && <ActionNotification message={notification.message} type={notification.type} />}
-            <div className="bg-dark-card border border-dark-border rounded-xl p-6">
-                <h2 className="text-xl font-bold text-white mb-4 text-center">😰 YOUR SUPPORT CHAOS</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                    <div className="bg-dark-bg p-3 rounded-lg"><p className="text-2xl font-bold text-red-400"><AnimatedCounter value={chaosMetrics.unread_emails} /></p><p className="text-xs">Unread Emails</p></div>
-                    <div className="bg-dark-bg p-3 rounded-lg"><p className="text-2xl font-bold text-red-400"><AnimatedCounter value={chaosMetrics.pending_chats} /></p><p className="text-xs">Pending Chats</p></div>
-                    <div className="bg-dark-bg p-3 rounded-lg"><p className="text-2xl font-bold text-red-400"><AnimatedCounter value={chaosMetrics.avg_response_time} decimals={1} suffix="h" /></p><p className="text-xs">Avg Response</p></div>
-                    <div className="bg-dark-bg p-3 rounded-lg"><p className="text-2xl font-bold text-red-400"><AnimatedCounter value={chaosMetrics.after_hours_count} /></p><p className="text-xs">After-Hours Msgs</p></div>
-                </div>
-                <p className="text-center text-sm text-dark-text-secondary mt-4">💔 Latest customer: "{chaosMetrics.latest_complaint_preview}"</p>
-                <p className="text-center text-sm font-bold text-brand-accent mt-2">👆 Your AI can handle {chaosMetrics.potential_auto_responses}% of these instantly!</p>
+        <div className={`bg-gradient-to-br ${valueClass} border border-dark-border rounded-xl p-4 space-y-2`}>
+            <div className="flex justify-between items-center text-dark-text-secondary">
+                <p className="text-sm font-semibold">{title}</p>
+                {icon}
             </div>
-
-            <div className="bg-dark-card border border-dark-border rounded-xl p-6">
-                <h2 className="text-xl font-bold text-white mb-2">🧠 AI INTELLIGENCE TRACKER</h2>
-                <div className="flex items-center gap-4">
-                    <p className="font-bold text-2xl text-brand-accent">{iqData.total_iq}/100</p>
-                    <div className="w-full bg-dark-bg rounded-full h-4 border border-dark-border"><motion.div className="bg-brand-primary h-full rounded-full" initial={{width:0}} animate={{width: `${iqData.total_iq}%`}} /></div>
-                </div>
-                <div className="mt-2 text-xs text-dark-text-secondary">
-                    <p>• FAQ docs: {iqData.faq_count} × 5 points = {iqData.faq_points}</p>
-                    <p>• Policy docs: {iqData.policy_count} × 10 points = {iqData.policy_points}</p>
-                    <p>• Escalation rules: {iqData.escalation_setup} × 15 points = {iqData.esc_pts}</p>
-                </div>
-            </div>
-
-            <AddDocumentCard onAdd={handleOpenModal} iqPoints={5} />
-            
-            <div className="bg-dark-card border border-dark-border rounded-xl p-6">
-                <h3 className="font-bold text-white mb-2">📊 Current Documents</h3>
-                <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                    {docs.map(doc => (
-                        <div key={doc.doc_id} className="bg-dark-bg p-2 rounded-md flex justify-between items-center text-sm">
-                            <p>📄 {doc.doc_type}: {doc.doc_name}</p>
-                            <span className="text-xs text-green-400 font-semibold">+ {doc.doc_type === 'FAQ' ? 5 : 10} IQ</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-            
-             <EscalationRulesCard rules={escalationRules} setRules={setEscalationRules} onSave={handleSaveRules} isSaving={isSavingRules} />
-
-             <AnimatePresence>
-                {isModalOpen && <AddDocumentModal agentName="Support AI" docType={modalDocType} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} />}
-             </AnimatePresence>
+            <p className="text-4xl font-bold text-white"><AnimatedCounter value={value} prefix={prefix} suffix={suffix} decimals={decimals} /></p>
         </div>
     );
 };
 
-const AddDocumentModal: React.FC<{ agentName: string, docType: WebAITrainingDoc['doc_type'], onClose: () => void, onSuccess: () => void }> = ({ agentName, docType, onClose, onSuccess }) => {
+const AnalyticsDashboard: React.FC<{ metrics: DashboardMetrics | null }> = ({ metrics }) => {
+    if (!metrics) {
+        return <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 animate-pulse">
+            {[...Array(6)].map((_, i) => <div key={i} className="h-28 bg-dark-card rounded-xl"></div>)}
+        </div>;
+    }
+
+    return (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <AnalyticsCard title="Today's Convos" value={metrics.conversationsToday} icon={ICONS.trendingUp} />
+            <AnalyticsCard title="Open Tickets" value={metrics.openTickets} icon={ICONS.clock} />
+            <AnalyticsCard title="AI Approval Rate" value={metrics.approvalRate} suffix="%" icon={ICONS.checkCircle} />
+            <AnalyticsCard title="Avg Response" value={metrics.avgResponseTime} suffix="m" icon={ICONS.zap} />
+            <AnalyticsCard title="Escalations" value={metrics.escalations} icon={ICONS.warning} />
+            <AnalyticsCard title="Emails Sent Today" value={metrics.emailsSentToday} icon={ICONS.mail} />
+        </div>
+    );
+};
+
+const Filters: React.FC<{ filters: any, setFilters: Function, topics: string[] }> = ({ filters, setFilters, topics }) => {
+    const handleFilterChange = (key: string, value: any) => {
+        setFilters((prev: any) => ({ ...prev, [key]: value }));
+    };
+
+    const statusOptions = ['all', 'pending', 'completed', 'escalated'];
+
+    return (
+        <div className="flex flex-col md:flex-row gap-2">
+            <input
+                type="search"
+                value={filters.searchQuery}
+                onChange={e => handleFilterChange('searchQuery', e.target.value)}
+                placeholder="Search by customer, email, topic..."
+                className="flex-grow bg-dark-bg border border-dark-border rounded-lg p-2 text-sm"
+            />
+            <select value={filters.status} onChange={e => handleFilterChange('status', e.target.value)} className="bg-dark-bg border border-dark-border rounded-lg p-2 text-sm">
+                {statusOptions.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+            </select>
+            <select value={filters.topicFilter} onChange={e => handleFilterChange('topicFilter', e.target.value)} className="bg-dark-bg border border-dark-border rounded-lg p-2 text-sm">
+                <option value="all">All Topics</option>
+                {topics.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+        </div>
+    );
+};
+
+const ConversationCard: React.FC<{ ticket: SupportTicket; onUpdate: (id: string, updates: Partial<SupportTicket>) => void; onGiveFeedback: (ticket: SupportTicket) => void; }> = ({ ticket, onUpdate, onGiveFeedback }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [editedDraft, setEditedDraft] = useState(ticket['Draft Email Body']);
+    const [isSaving, setIsSaving] = useState(false);
+    const saveTimeout = useRef<number>();
+
+    useEffect(() => {
+        if (editedDraft === ticket['Draft Email Body']) return;
+        
+        setIsSaving(true);
+        clearTimeout(saveTimeout.current);
+        saveTimeout.current = window.setTimeout(async () => {
+            try {
+                await supportService.saveDraft({
+                    message_id: ticket._messageId,
+                    user_email: 'demo@zulari.app',
+                    draft_body: editedDraft
+                });
+                onUpdate(ticket._messageId, { 'Draft Email Body': editedDraft });
+            } catch (err) {
+                console.error("Save draft failed", err);
+            } finally {
+                setIsSaving(false);
+            }
+        }, 1200);
+    }, [editedDraft, ticket]);
+
+    const handleAction = (action: 'approve' | 'decline' | 'escalate') => {
+      onUpdate(ticket._messageId, { 'Approval Status': action === 'approve' ? 'Approved' : (action === 'decline' ? 'Declined' : 'Escalated') });
+    };
+
+    const isUrgent = ticket._isEscalated || ticket['Inquiry Topic'].toLowerCase().includes('urgent');
+    const cardBorder = ticket._needsAction ? 'border-brand-primary' : 'border-dark-border';
+    const actionTaken = ['Approved', 'Declined', 'Escalated'].includes(ticket['Approval Status']);
+
+    return (
+        <motion.div layout className={`bg-dark-card border rounded-xl overflow-hidden ${cardBorder}`}>
+            <div className="p-4 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
+                <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-2 text-sm">
+                        <span className={`w-2 h-2 rounded-full ${ticket._needsAction ? 'bg-brand-primary animate-pulse' : 'bg-green-500'}`}></span>
+                        <span className="font-bold text-white">{ticket['Customer Name']}</span>
+                        <span className="text-dark-text-secondary hidden sm:inline">{ticket['Customer Email Address']}</span>
+                        <span className="text-dark-text-secondary">•</span>
+                        <span className="font-semibold text-dark-text-secondary">{ticket['Inquiry Topic']}</span>
+                    </div>
+                    <span className="text-xs text-dark-text-secondary">{timeAgo(ticket._timestamp)}</span>
+                </div>
+                <p className="text-sm text-dark-text-secondary mt-2 pl-4 italic">💭 "{ticket['Inquiry Body']}"</p>
+                <p className="text-sm text-dark-text mt-2 pl-4">🤖 AI: "{ticket['Draft Email Body']}"</p>
+                <div className="text-xs text-dark-text-secondary mt-2 pl-4">⚡ Confidence: {ticket._confidence}% • 🎯 Sentiment: {ticket._sentiment}</div>
+            </div>
+            
+            <AnimatePresence>
+                {isExpanded && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                    >
+                        <div className="p-4 border-t border-dark-border space-y-4">
+                            <div>
+                                <h4 className="font-semibold text-white text-sm mb-1">📝 Thread Summary</h4>
+                                <p className="text-xs bg-dark-bg p-2 rounded-md">{ticket['Thread Summary']}</p>
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-white text-sm mb-1">🤖 AI Draft Response</h4>
+                                <textarea value={editedDraft} onChange={e => setEditedDraft(e.target.value)} className="w-full bg-dark-bg p-2 rounded-md text-sm font-mono h-32" />
+                                <div className="text-right text-xs text-dark-text-secondary h-4">{isSaving ? 'Saving...' : 'Saved'}</div>
+                            </div>
+                            <details className="text-sm">
+                                <summary className="cursor-pointer font-semibold">🧠 AI Reasoning</summary>
+                                <p className="text-xs bg-dark-bg p-2 rounded-md mt-1">{ticket.Reasoning}</p>
+                            </details>
+                             <div className="flex flex-wrap gap-2 pt-2 border-t border-dark-border">
+                                {actionTaken ? (
+                                    <>
+                                        <div className="flex-1 text-center py-2 text-sm font-bold text-green-400">Action Taken: {ticket['Approval Status']}</div>
+                                        {!ticket._feedbackGiven && (
+                                            <button onClick={() => onGiveFeedback(ticket)} className="flex-1 bg-sky-600 hover:bg-sky-500 text-white font-bold py-2 px-3 rounded-lg text-sm">⭐ Give Feedback</button>
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        <button onClick={() => handleAction('approve')} className="flex-1 bg-brand-secondary hover:bg-emerald-500 text-white font-bold py-2 px-3 rounded-lg text-sm">✅ Approve</button>
+                                        <button className="flex-1 bg-dark-bg hover:bg-dark-border py-2 px-3 rounded-lg text-sm" onClick={() => handleAction('decline')}>❌ Decline</button>
+                                        <button className={`flex-1 ${isUrgent ? 'bg-red-600' : 'bg-dark-bg'} hover:bg-red-500 py-2 px-3 rounded-lg text-sm`} onClick={() => handleAction('escalate')}>🚨 Escalate</button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </motion.div>
+    );
+};
+
+
+// --- The main page, completely rewritten ---
+const CustomerSupportAIDashboardPage: React.FC = () => {
+    const [view, setView] = useState<'inbox' | 'training'>('inbox');
+    const [tickets, setTickets] = useState<SupportTicket[]>([]);
+    const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [filters, setFilters] = useState({ status: 'pending', searchQuery: '', topicFilter: 'all' });
+    const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+    const [showConfetti, setShowConfetti] = useState(false);
+    const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+    const [feedbackModalState, setFeedbackModalState] = useState<{ isOpen: boolean; ticket: SupportTicket | null }>({ isOpen: false, ticket: null });
+
+    const pollingInterval = useRef<number>();
+
+    const fetchData = useCallback(async () => {
+        if (!loading) setLoading(true);
+        setError(null);
+        try {
+            const data = await supportService.fetchSupportTickets();
+            const parsedTickets = parseSupportTickets(data);
+            setTickets(parsedTickets);
+            setMetrics(calculateDashboardMetrics(parsedTickets));
+        } catch (e: any) {
+            setError(e.message || "Failed to fetch data.");
+        } finally {
+            setLoading(false);
+        }
+    }, [loading]);
+
+    useEffect(() => {
+        fetchData();
+        // FIX: The `hasActivePending` variable was used outside its scope. I have defined it before the `setInterval` call.
+        const hasActivePending = tickets.some(t => t._needsAction);
+        const intervalId = window.setInterval(() => {
+            if (!document.hidden) {
+                fetchData();
+            }
+        }, hasActivePending ? 10000 : 60000);
+        pollingInterval.current = intervalId;
+
+        // FIX: Added a non-null assertion `!` as TypeScript cannot guarantee `pollingInterval.current` is not null inside the callback.
+        return () => clearInterval(pollingInterval.current!);
+    }, [fetchData]);
+
+    const uniqueTopics = useMemo(() => [...new Set(tickets.map(t => t['Inquiry Topic']))], [tickets]);
+
+    const filteredTickets = useMemo(() => {
+        return tickets.filter(t => {
+            if (filters.status !== 'all') {
+                const statusMap = {
+                    'pending': ['Pending', 'Needs Iteration', 'In Progress'],
+                    'completed': ['Completed', 'Approved', 'Declined'],
+                    'escalated': ['Escalated']
+                };
+                if (!statusMap[filters.status as keyof typeof statusMap]?.includes(t['Approval Status']) && !statusMap[filters.status as keyof typeof statusMap]?.includes(t['Status'])) {
+                    return false;
+                }
+            }
+            if (filters.topicFilter !== 'all' && t['Inquiry Topic'] !== filters.topicFilter) {
+                return false;
+            }
+            if (filters.searchQuery) {
+                const query = filters.searchQuery.toLowerCase();
+                return (
+                    t['Customer Name']?.toLowerCase().includes(query) ||
+                    t['Customer Email Address']?.toLowerCase().includes(query) ||
+                    t['Inquiry Topic']?.toLowerCase().includes(query) ||
+                    t['Inquiry Body']?.toLowerCase().includes(query)
+                );
+            }
+            return true;
+        }).sort((a, b) => getPriority(b) - getPriority(a) || b._timestamp.getTime() - a._timestamp.getTime());
+    }, [tickets, filters]);
+
+    const handleUpdateTicket = (id: string, updates: Partial<SupportTicket>) => {
+        setTickets(prev => prev.map(t => t._messageId === id ? { ...t, ...updates } : t));
+        setNotification({ message: 'Your decision has been recorded. For your security and final review, an email has been sent to your inbox to confirm this action.', type: 'success' });
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 2000);
+    };
+
+    const handleGiveFeedback = (ticket: SupportTicket) => {
+        setFeedbackModalState({ isOpen: true, ticket });
+    };
+
+    const handleFeedbackSent = (ticketId: string) => {
+        setTickets(prev => prev.map(t => t._messageId === ticketId ? { ...t, _feedbackGiven: true } : t));
+        setNotification({ message: 'Thank you! Your feedback helps the AI improve.', type: 'success' });
+    };
+
+    const inboxView = (
+      <div className="space-y-6">
+          {showConfetti && <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-5xl pointer-events-none z-[100]"><div className="animate-confetti-burst">🎉</div></div>}
+          <AnalyticsDashboard metrics={metrics} />
+          <Filters filters={filters} setFilters={setFilters} topics={uniqueTopics} />
+          {loading && !tickets.length ? <p>Loading...</p> : 
+           error ? <p className="text-red-400">{error}</p> :
+           <div className="space-y-4">
+              {filteredTickets.length > 0 ? filteredTickets.map(ticket => (
+                  <ConversationCard key={ticket._messageId} ticket={ticket} onUpdate={handleUpdateTicket} onGiveFeedback={handleGiveFeedback} />
+              )) : <p className="text-center py-8 text-dark-text-secondary">No conversations match your filters.</p>}
+           </div>
+          }
+      </div>
+    );
+    
+    return (
+        <IntegrationBanner serviceName="Support AI" required={['Gmail']}>
+            <div className="space-y-6">
+                {notification && <ActionNotification message={notification.message} type={notification.type} />}
+                <div className="flex items-center justify-between">
+                    <h1 className="text-3xl font-bold text-white">AI Customer Support</h1>
+                    <div className="flex items-center gap-1 p-1 bg-dark-card rounded-lg border border-dark-border">
+                        <button onClick={() => setView('inbox')} className={`px-3 py-1 text-sm rounded-md ${view === 'inbox' ? 'bg-brand-primary' : ''}`}>Inbox</button>
+                        <button onClick={() => setView('training')} className={`px-3 py-1 text-sm rounded-md ${view === 'training' ? 'bg-brand-primary' : ''}`}>Training</button>
+                        <button onClick={() => setIsSettingsModalOpen(true)} className="p-2 rounded-md hover:bg-dark-border">{ICONS.settings}</button>
+                    </div>
+                </div>
+
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={view}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        {view === 'inbox' ? inboxView : <SupportAITrainingView />}
+                    </motion.div>
+                </AnimatePresence>
+            </div>
+            <SupportSettingsModal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} onSave={() => setNotification({message: 'Settings saved!', type: 'success'})} />
+            <SupportFeedbackModal isOpen={feedbackModalState.isOpen} onClose={() => setFeedbackModalState({isOpen: false, ticket: null})} ticket={feedbackModalState.ticket} onFeedbackSent={handleFeedbackSent} />
+            <SupportAIChat tickets={filteredTickets} metrics={metrics} />
+        </IntegrationBanner>
+    );
+};
+
+
+// PRESERVED TRAINING VIEW (as requested)
+const ChaosPanel: React.FC<{ metrics: SupportChaosMetrics }> = ({ metrics }) => (
+    <div className="bg-dark-card border border-dark-border rounded-xl p-6 h-full">
+        <h2 className="text-xl font-bold text-white mb-4 text-center">😰 YOUR SUPPORT CHAOS (Before AI)</h2>
+        <div className="grid grid-cols-2 gap-4 text-center">
+            <div className="bg-dark-bg p-3 rounded-lg"><p className="text-2xl font-bold text-red-400">{metrics.unread_emails}</p><p className="text-xs">Unread Emails</p></div>
+            <div className="bg-dark-bg p-3 rounded-lg"><p className="text-2xl font-bold text-red-400">{metrics.avg_response_time}h</p><p className="text-xs">Avg Response Time</p></div>
+            <div className="bg-dark-bg p-3 rounded-lg"><p className="text-2xl font-bold text-red-400">{metrics.pending_chats}</p><p className="text-xs">Pending Chats</p></div>
+            <div className="bg-dark-bg p-3 rounded-lg"><p className="text-2xl font-bold text-red-400">{metrics.after_hours_count}</p><p className="text-xs">After-Hours Msgs</p></div>
+        </div>
+        <div className="mt-4 pt-4 border-t border-dark-border text-center">
+             <p className="text-sm text-dark-text-secondary">Latest Complaint: <i className="text-white">"{metrics.latest_complaint_preview}"</i></p>
+        </div>
+    </div>
+);
+
+const PerformancePanel: React.FC<{ metrics: SupportPerformanceMetrics }> = ({ metrics }) => (
+    <div className="bg-dark-card border border-dark-border rounded-xl p-6 h-full">
+        <h2 className="text-xl font-bold text-white mb-4 text-center">🏆 AI-POWERED PERFORMANCE (After AI)</h2>
+        <div className="grid grid-cols-2 gap-4 text-center">
+            <div className="bg-dark-bg p-3 rounded-lg"><p className="text-2xl font-bold text-green-400">{metrics.responses_today}</p><p className="text-xs">Responses Today</p></div>
+            <div className="bg-dark-bg p-3 rounded-lg"><p className="text-2xl font-bold text-green-400">{metrics.avg_response_time}s</p><p className="text-xs">Avg Response Time</p></div>
+            <div className="bg-dark-bg p-3 rounded-lg"><p className="text-2xl font-bold text-green-400">{metrics.csat_avg}%</p><p className="text-xs">Avg CSAT</p></div>
+            <div className="bg-dark-bg p-3 rounded-lg"><p className="text-2xl font-bold text-green-400">{metrics.time_saved_hours}h</p><p className="text-xs">Time Saved / Day</p></div>
+        </div>
+        <div className="mt-4 pt-4 border-t border-dark-border text-center">
+             <p className="text-lg font-bold text-brand-accent">Total Improvement: +{metrics.improvement_pct}%</p>
+        </div>
+    </div>
+);
+
+const SupportDocsTable: React.FC<{ docs: UnifiedTrainingDoc[], onAdd: () => void, iq: number }> = ({ docs, onAdd, iq }) => (
+    <div className="bg-dark-card border border-dark-border rounded-xl p-6 h-full flex flex-col">
+        <div className="flex justify-between items-start">
+            <div>
+                <h2 className="text-xl font-bold text-white">🏗️ Build Your Support AI's Brain</h2>
+                <p className="text-sm text-dark-text-secondary">The more complete documents you add, the smarter your AI becomes.</p>
+            </div>
+            <div className="text-center">
+                 <p className="font-bold text-2xl text-brand-accent">{iq}%</p>
+                 <p className="text-xs text-dark-text-secondary">Agent IQ</p>
+            </div>
+        </div>
+        <div className="space-y-2 max-h-60 overflow-y-auto pr-2 mt-4 flex-grow">
+            {docs.length > 0 ? docs.map(doc => (
+                <div key={doc.doc_id} className="bg-dark-bg p-3 rounded-md">
+                    <p className="font-semibold">📄 {doc.doc_name} ({doc.doc_type})</p>
+                    <p className="text-xs text-dark-text-secondary">Status: {doc.doc_status} | Last Updated: {doc.last_updated}</p>
+                </div>
+            )) : <p className="text-sm text-center text-dark-text-secondary py-4">No documents trained yet.</p>}
+        </div>
+        <button onClick={onAdd} className="w-full mt-4 bg-dark-bg hover:bg-dark-border font-semibold py-2 rounded-lg">+ Add Document</button>
+    </div>
+);
+
+const EscalationRulesEditor: React.FC<{ rules: EscalationRules, setRules: (rules: EscalationRules) => void, onSave: () => void, isSaving: boolean }> = ({ rules, setRules, onSave, isSaving }) => {
+    const handleToggle = (type: 'auto' | 'manual', rule: string) => {
+        const currentList = rules[type];
+        const newList = currentList.includes(rule) ? currentList.filter(r => r !== rule) : [...currentList, rule];
+        setRules({ ...rules, [type]: newList });
+    };
+
+    return (
+        <div className="bg-dark-card border border-dark-border rounded-xl p-6">
+            <h2 className="text-xl font-bold text-white mb-2">Smart Escalation Rules</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <h3 className="font-bold mb-2">🤖 AI Handles:</h3>
+                    <div className="space-y-2">{['Business hours & location', 'Shipping & return policy', 'Product availability'].map(rule => <label key={rule} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={rules.auto.includes(rule)} onChange={() => handleToggle('auto', rule)} /> {rule}</label>)}</div>
+                </div>
+                 <div>
+                    <h3 className="font-bold mb-2">🙋 Escalates to You:</h3>
+                    <div className="space-y-2">{['Refund requests', 'Complaints & angry tone', 'Custom orders'].map(rule => <label key={rule} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={rules.manual.includes(rule)} onChange={() => handleToggle('manual', rule)} /> {rule}</label>)}</div>
+                </div>
+            </div>
+            <button onClick={onSave} disabled={isSaving} className="mt-4 bg-dark-bg hover:bg-dark-border text-sm font-semibold py-2 px-4 rounded-lg">{isSaving ? 'Saving...' : '💾 Save Rules'}</button>
+        </div>
+    );
+};
+
+const AddDocumentModal: React.FC<{ agentName: string, onClose: () => void, onSuccess: () => void }> = ({ agentName, onClose, onSuccess }) => {
     const [docName, setDocName] = useState('');
-    const [currentDocType, setCurrentDocType] = useState(docType);
+    const [docType, setDocType] = useState<WebAITrainingDoc['doc_type']>('FAQ');
     const [content, setContent] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -196,8 +453,8 @@ const AddDocumentModal: React.FC<{ agentName: string, docType: WebAITrainingDoc[
         setIsSubmitting(true);
         try {
             const payload = {
-                user_email: "alice@store.com", agent_name: agentName,
-                doc_id: `doc_${Date.now()}`, doc_name: docName, doc_type: currentDocType,
+                user_email: "demo@zulari.app", agent_name: agentName,
+                doc_id: `doc_${Date.now()}`, doc_name: docName, doc_type: docType,
                 doc_status: "Complete", uploaded_date: new Date().toISOString().split('T')[0],
                 last_updated: new Date().toISOString().split('T')[0], content
             };
@@ -213,224 +470,76 @@ const AddDocumentModal: React.FC<{ agentName: string, docType: WebAITrainingDoc[
             <div className="bg-dark-card border border-dark-border rounded-xl p-6 w-full max-w-lg space-y-4" onClick={e => e.stopPropagation()}>
                 <h3 className="font-bold text-white text-lg">Add Document to {agentName}</h3>
                 {error && <p className="text-red-400 text-sm bg-red-900/50 p-2 rounded-md">{error}</p>}
-                <select value={currentDocType} onChange={e=>setCurrentDocType(e.target.value as any)} className="w-full bg-dark-bg p-2 rounded text-sm border border-dark-border"><option>FAQ</option><option>Policy</option><option>SOP</option><option>Chat Scripts</option></select>
+                <select value={docType} onChange={e=>setDocType(e.target.value as any)} className="w-full bg-dark-bg p-2 rounded text-sm border border-dark-border">
+                    <option>FAQ</option><option>Policy</option><option>SOP</option><option>Company DNA</option>
+                </select>
                 <input value={docName} onChange={e=>setDocName(e.target.value)} placeholder="Document Title (e.g., Return Policy)" className="w-full bg-dark-bg p-2 rounded text-sm border border-dark-border" />
                 <textarea rows={8} value={content} onChange={e=>setContent(e.target.value)} placeholder="Paste content here..." className="w-full bg-dark-bg p-2 rounded text-sm border border-dark-border font-mono" />
                 <div className="flex justify-end gap-2">
                     <button onClick={onClose} disabled={isSubmitting} className="bg-dark-bg hover:bg-dark-border px-4 py-2 text-sm rounded-lg">Cancel</button>
-                    <button onClick={handleSubmit} disabled={isSubmitting} className="bg-brand-primary hover:bg-indigo-500 text-white font-semibold px-4 py-2 text-sm rounded-lg disabled:bg-slate-600">{isSubmitting ? 'Adding...' : '✅ Add Document'}</button>
+                    <button onClick={handleSubmit} disabled={isSubmitting} className="bg-brand-primary hover:bg-indigo-500 text-white font-semibold px-4 py-2 text-sm rounded-lg disabled:bg-slate-600">{isSubmitting ? 'Adding...' : '✅ Add & Train'}</button>
                 </div>
             </div>
         </div>
     );
 };
 
-const AddDocumentCard: React.FC<{ onAdd: (type: WebAITrainingDoc['doc_type']) => void, iqPoints: number }> = ({ onAdd, iqPoints }) => (
-    <div className="bg-dark-card border border-dark-border rounded-xl p-6">
-        <h2 className="text-xl font-bold text-white mb-2">📚 TEACH YOUR AI</h2>
-        <div className="flex flex-wrap gap-2 mb-4">
-            {(['FAQ', 'Policy', 'SOP', 'Chat Scripts'] as const).map(type => (
-                <button key={type} onClick={() => onAdd(type)} className="bg-dark-bg hover:bg-dark-border text-sm font-semibold py-2 px-3 rounded-lg">📋 {type}</button>
-            ))}
-        </div>
-        <p className="text-sm text-brand-accent font-semibold">🎯 This will add +{iqPoints} IQ points and handle return questions!</p>
-    </div>
-);
-
-const EscalationRulesCard: React.FC<{ rules: EscalationRules, setRules: (rules: EscalationRules) => void, onSave: () => Promise<void>, isSaving: boolean }> = ({ rules, setRules, onSave, isSaving }) => {
-    const allRules = {
-        auto: ['Business hours & location', 'Shipping & return policy', 'Product availability', 'Basic how-to questions'],
-        manual: ['Refund requests', 'Complaints & angry tone', 'Technical problems', 'Custom orders']
-    };
-
-    const handleToggle = (type: 'auto' | 'manual', rule: string) => {
-        const currentList = rules[type];
-        const newList = currentList.includes(rule) ? currentList.filter(r => r !== rule) : [...currentList, rule];
-        setRules({ ...rules, [type]: newList });
-    };
-    
-    return (
-        <div className="bg-dark-card border border-dark-border rounded-xl p-6">
-             <h2 className="text-xl font-bold text-white mb-4">🛡️ ESCALATION RULES</h2>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <h3 className="font-bold text-white mb-2">🤖 AI Handles Automatically:</h3>
-                    <div className="space-y-2">{allRules.auto.map(rule => <label key={rule} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={rules.auto.includes(rule)} onChange={() => handleToggle('auto', rule)} /> {rule}</label>)}</div>
-                </div>
-                 <div>
-                    <h3 className="font-bold text-white mb-2">🙋 Escalate to You:</h3>
-                    <div className="space-y-2">{allRules.manual.map(rule => <label key={rule} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={rules.manual.includes(rule)} onChange={() => handleToggle('manual', rule)} /> {rule}</label>)}</div>
-                </div>
-             </div>
-             <button onClick={onSave} disabled={isSaving} className="mt-4 bg-dark-bg hover:bg-dark-border text-sm font-semibold py-2 px-4 rounded-lg disabled:bg-slate-600">
-                {isSaving ? 'Saving...' : '💾 Save Rules'}
-             </button>
-        </div>
-    );
-};
-
-
-const CustomerSupportAIDashboardPage: React.FC = () => {
-    const [allRows, setAllRows] = useState<SupportRow[]>([]);
-    const [kpis, setKpis] = useState<any>(null);
+const SupportAITrainingView: React.FC = () => {
+    const [docs, setDocs] = useState<UnifiedTrainingDoc[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [filter, setFilter] = useState<Filter>('pending');
-    const [selectedRow, setSelectedRow] = useState<SupportRow | null>(null);
     const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
-    const [view, setView] = useState<View>('inbox');
-    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isSavingRules, setIsSavingRules] = useState(false);
     
-    const loadingRef = useRef(false);
+    const chaosMetrics: SupportChaosMetrics = { unread_emails: 124, pending_chats: 32, avg_response_time: 4.5, after_hours_count: 56, latest_complaint_preview: "My order still hasn't arrived...", potential_auto_responses: 75 };
+    const performanceMetrics: SupportPerformanceMetrics = { responses_today: 312, whatsapp_responses: 45, escalations_today: 4, avg_response_time: 42, csat_avg: 92, time_saved_hours: 8.5, improvement_pct: 78 };
+    const [escalationRules, setEscalationRules] = useState<EscalationRules>({ auto: ['Business hours & location', 'Shipping & return policy', 'Product availability'], manual: ['Refund requests', 'Complaints & angry tone', 'Custom orders'] });
 
     const fetchData = useCallback(async () => {
-        if (loadingRef.current) return;
-        loadingRef.current = true;
         setLoading(true);
-        setError(null);
-
         try {
-            const data = await supportService.fetchSheetData();
-            const mappedRows = supportService.mapValuesToObjects(data.values);
-            setAllRows(mappedRows);
-            setKpis(calcKPIs(mappedRows));
+            const allDocs = await n8n.fetchUnifiedTrainingData('demo@zulari.app');
+            setDocs(allDocs.filter(d => d.agent_name === 'Support AI'));
         } catch (e: any) {
-            setError(e.message || "Failed to fetch data.");
-            setAllRows([]);
-            setKpis(null);
+            setNotification({ message: `Failed to fetch training data: ${e.message}`, type: 'error' });
         } finally {
             setLoading(false);
-            loadingRef.current = false;
         }
     }, []);
 
-    const handleAction = async (action: 'approve' | 'escalate', row: SupportRow, notes?: string) => {
-        const newStatus: Status = action === 'approve' ? 'Complete' : 'Escalated';
-        const optimisticRows = allRows.map(r => r.rowNumber === row.rowNumber ? {...r, Status: newStatus} : r);
-        setAllRows(optimisticRows);
-        setSelectedRow(null);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
-        try {
-            await supportService.patchRow(row.rowNumber, { 
-                Status: newStatus,
-                HumanResponse: action === 'approve' ? "Approved via UI" : "Escalated via UI",
-                "CRM Notes": notes || ""
-            });
-            
-            await supportService.postAction({
-                action,
-                userEmail: "demo@zulari.app",
-                rowNumber: row.rowNumber,
-                customerName: row['Customer Name'],
-                customerEmail: row['Customer Email Address'],
-                subject: row['Inquiry Topic'],
-                notes: notes || `Actioned via UI`
-            });
-
-            setNotification({ message: `Your ${action} is queued. You’ll receive a confirmation email shortly.`, type: 'success' });
-            setTimeout(() => fetchData(), 1000);
-        } catch(e: any) {
-            setNotification({ message: `Action failed: ${e.message}`, type: 'error' });
-            fetchData(); // Revert
-        }
-    };
-
-    const filteredRows = useMemo(() => {
-        const today = new Date().toDateString();
-        switch (filter) {
-            case 'today':
-                return allRows.filter(r => parseTimestamp(r.Timestamp)?.toDateString() === today);
-            case 'pending':
-                return allRows.filter(r => ['Pending', 'In Progress', 'New'].includes(r.Status as string));
-            case 'escalated':
-                 return allRows.filter(r => String(r['Escalation Flag']).toUpperCase() === 'TRUE' || String(r['Escalation Flag']).toUpperCase() === 'YES' || r.Status === 'Escalated');
-            case 'completed':
-                return allRows.filter(r => r.Status === 'Complete');
-            case 'all':
-            default:
-                return allRows;
-        }
-    }, [allRows, filter]);
+    const iqData = useMemo(() => calculateSupportAI_IQ(docs, escalationRules), [docs, escalationRules]);
     
-    const groupedRows = useMemo(() => {
-        const groups: { [key: string]: SupportRow[] } = { Today: [], Yesterday: [], Older: [] };
-        const today = new Date().toDateString();
-        const yesterday = new Date(Date.now() - 86400000).toDateString();
-        
-        filteredRows.forEach(row => {
-            const date = parseTimestamp(row.Timestamp);
-            if (!date) {
-                groups.Older.push(row);
-                return;
-            }
-            const dateString = date.toDateString();
-            if (dateString === today) groups.Today.push(row);
-            else if (dateString === yesterday) groups.Yesterday.push(row);
-            else groups.Older.push(row);
-        });
-        
-        return Object.entries(groups)
-            .map(([title, items]) => ({ title, items }))
-            .filter(g => g.items.length > 0);
-    }, [filteredRows]);
+    const handleSaveRules = async () => {
+        setIsSavingRules(true);
+        setNotification(null);
+        try {
+            const payload = { user_email: "demo@zulari.app", agent_name: "Support AI", doc_id: `escalation_rules_${Date.now()}`, doc_name: "Escalation Rules", doc_type: "Policy", doc_status: "Complete", uploaded_date: new Date().toISOString().split('T')[0], last_updated: new Date().toISOString().split('T')[0], content: JSON.stringify(escalationRules) };
+            const response: AddTrainingDocResponse = await n8n.addUnifiedTrainingDoc(payload);
+            if (Array.isArray(response) && response[0]?.status === 'Successfull') { setNotification({ message: 'Escalation rules saved successfully!', type: 'success' }); fetchData(); }
+            else { throw new Error('Webhook returned an unexpected response for saving rules.'); }
+        } catch (err: any) { setNotification({ message: err.message || 'Failed to save rules.', type: 'error' });
+        } finally { setIsSavingRules(false); }
+    };
+    
+    const handleSuccess = () => { setIsModalOpen(false); setNotification({message: 'Document added successfully!', type: 'success'}); fetchData(); };
+
+    if (loading) return <div className="text-center p-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary mx-auto"></div></div>;
 
     return (
         <div className="space-y-6">
-             <IntegrationBanner serviceName="Support AI" required={['Gmail']}>
-                {notification && <ActionNotification message={notification.message} type={notification.type} />}
-                <SupportHero 
-                    kpis={kpis}
-                    loading={loading}
-                    onSync={fetchData}
-                    onOpenSettings={() => setIsSettingsOpen(true)}
-                />
-                
-                <div className="flex items-center justify-between">
-                    <SupportFiltersBar activeFilter={filter} setFilter={setFilter} />
-                    <div className="flex items-center gap-2 p-1 bg-dark-card rounded-lg border border-dark-border">
-                        <button onClick={() => setView('inbox')} className={`px-3 py-1 text-sm rounded-md ${view === 'inbox' ? 'bg-brand-primary' : ''}`}>Inbox</button>
-                        <button onClick={() => setView('training')} className={`px-3 py-1 text-sm rounded-md ${view === 'training' ? 'bg-brand-primary' : ''}`}>Training</button>
-                    </div>
-                </div>
-
-                <AnimatePresence mode="wait">
-                    <motion.div
-                        key={view}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.2 }}
-                    >
-                        {view === 'inbox' ? (
-                            <SupportList
-                                loading={loading}
-                                error={error}
-                                groupedRows={groupedRows}
-                                onSelectRow={setSelectedRow}
-                                onRetry={fetchData}
-                            />
-                        ) : (
-                            <SupportAITrainingView />
-                        )}
-                    </motion.div>
-                </AnimatePresence>
-
-                <SupportDetailDrawer
-                    row={selectedRow}
-                    onClose={() => setSelectedRow(null)}
-                    onAction={handleAction}
-                />
-                
-                <SettingsModal
-                    isOpen={isSettingsOpen}
-                    onClose={() => setIsSettingsOpen(false)}
-                />
-                <footer className="text-center text-xs text-dark-text-secondary mt-4">
-                    Only your sheet data is used. We never send customer data anywhere except the training & settings webhooks you explicitly call.
-                </footer>
-            </IntegrationBanner>
+            {notification && <ActionNotification message={notification.message} type={notification.type} />}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <ChaosPanel metrics={chaosMetrics} />
+                <PerformancePanel metrics={performanceMetrics} />
+            </div>
+            <SupportDocsTable docs={docs} onAdd={() => setIsModalOpen(true)} iq={iqData.total_iq} />
+            <EscalationRulesEditor rules={escalationRules} setRules={setEscalationRules} onSave={handleSaveRules} isSaving={isSavingRules} />
+            {isModalOpen && <AddDocumentModal agentName="Support AI" onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} />}
         </div>
     );
 };
+
 
 export default CustomerSupportAIDashboardPage;

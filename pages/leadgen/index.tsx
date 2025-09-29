@@ -48,7 +48,7 @@ const LeadGenerationPage: React.FC = () => {
                         }
                     >
                         {/* FIX: Cast props to 'any' to resolve TypeScript error with cloneElement and SVG props. */}
-                        {React.cloneElement(link.icon, {className: 'h-4 w-4'} as any)}
+                        {React.cloneElement(link.icon, {className: 'h-4 w-4'})}
                         <span>
                            {link.name}
                         </span>

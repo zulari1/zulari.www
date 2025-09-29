@@ -4,7 +4,8 @@ import { useIntegrations } from '../../hooks/useIntegrations';
 import SubPageHeader from '../../components/SubPageHeader';
 import GmailConnectPrompt from '../../components/GmailConnectPrompt';
 import { ICONS } from '../../constants';
-import { format, parseISO } from 'date-fns';
+// FIX: Removed `parseISO` as it's not a consistently available export. `new Date()` handles ISO strings correctly.
+import { format } from 'date-fns';
 import { VITE_GMAIL_CLIENT_ID } from '../../env';
 import { Integration } from '../../types';
 
@@ -56,7 +57,8 @@ const IntegrationsPage: React.FC = () => {
     const formatDate = (dateString: string) => {
         if (!dateString) return 'N/A';
         try {
-            return format(parseISO(dateString), "MMM d, yyyy 'at' h:mm a");
+            // FIX: Replaced `parseISO` with the native `new Date()` constructor, which reliably handles ISO strings.
+            return format(new Date(dateString), "MMM d, yyyy 'at' h:mm a");
         } catch (e) {
             return dateString;
         }

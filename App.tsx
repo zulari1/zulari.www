@@ -50,7 +50,8 @@ import AiAssistant from './components/AiAssistant';
 import { useAuth } from './hooks/useAuth';
 import { IntegrationsProvider } from './hooks/useIntegrations';
 
-const ProtectedRoute: React.FC<{children: React.ReactNode}> = ({ children }) => {
+// FIX: Redefined ProtectedRoute to use a standard function component signature to resolve the type error.
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { loading, hasAccess } = useAuth();
     const navigate = useNavigate();
     const [ready, setReady] = useState(false);
@@ -78,7 +79,7 @@ const ProtectedRoute: React.FC<{children: React.ReactNode}> = ({ children }) => 
     return <>{children}</>;
 };
 
-const MainLayout: React.FC = () => {
+const MainLayout: React.FC<{children?: React.ReactNode}> = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (

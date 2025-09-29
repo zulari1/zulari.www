@@ -14,6 +14,13 @@ interface IntegrationBannerProps {
 }
 
 const IntegrationBanner: React.FC<IntegrationBannerProps> = ({ serviceName, required, children }) => {
+    // --- TEMPORARILY DISABLED FOR TESTING ---
+    // The user requested to bypass the integration check for development.
+    // This will be re-enabled when the app is ready for production.
+    return <>{children}</>;
+
+    // --- ORIGINAL IMPLEMENTATION ---
+    /*
     const { isServiceEnabled, getIntegration, loading } = useIntegrations();
     const userEmail = 'demo@zulari.app'; // Hardcoded for demo
 
@@ -126,6 +133,7 @@ const IntegrationBanner: React.FC<IntegrationBannerProps> = ({ serviceName, requ
             </p>
         </div>
     );
+    */
 };
 
 export default IntegrationBanner;

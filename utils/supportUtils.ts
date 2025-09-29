@@ -1,12 +1,7 @@
 // utils/supportUtils.ts
-import { SupportRow } from '../types';
+import { SupportTicket, DashboardMetrics } from '../types';
+import { isSameDay as fnsIsSameDay, formatDistanceToNowStrict } from 'date-fns';
 
-export interface SupportKpis {
-    conversationsToday: number;
-    resolved: number;
-    escalated: number;
-    resolutionRate: number;
-}
 
 export function parseTimestamp(ts: string | null | undefined): Date | null {
     if (!ts) return null;
@@ -17,17 +12,13 @@ export function parseTimestamp(ts: string | null | undefined): Date | null {
     return null;
 }
 
-export function timeAgo(ts: string) {
-    const d = parseTimestamp(ts);
-    if (!d) return '';
-    const mins = Math.round((Date.now() - d.getTime()) / 60000);
-    if (mins < 1) return 'just now';
-    if (mins < 60) return `${mins}m`;
-    const hrs = Math.round(mins / 60);
-    if (hrs < 24) return `${hrs}h`;
-    const days = Math.round(hrs / 24);
-    return `${days}d`;
+export function timeAgo(ts: Date | string) {
+    if (!ts) return '';
+    const date = typeof ts === 'string' ? new Date(ts) : ts;
+    if (isNaN(date.getTime())) return '';
+    return formatDistanceToNowStrict(date, { addSuffix: true });
 }
+
 
 export function parseProcessing(s: string = ''): number {
     if (!s) return 0;
@@ -38,22 +29,55 @@ export function parseProcessing(s: string = ''): number {
     return minutes * 60 + seconds;
 }
 
-export function calcKPIs(rows: SupportRow[]): SupportKpis {
-    if (!rows || rows.length === 0) {
-        return { conversationsToday: 0, resolved: 0, escalated: 0, resolutionRate: 0 };
-    }
-    
-    const today = new Date().toDateString();
-    const conversationsToday = rows.filter(r => parseTimestamp(r.Timestamp)?.toDateString() === today).length;
-    const resolved = rows.filter(r => r.Status === 'Complete').length;
-    const escalated = rows.filter(r => String(r['Escalation Flag']).toUpperCase() === 'TRUE' || String(r['Escalation Flag']).toUpperCase() === 'YES').length;
-    
-    const resolutionRate = Math.round((resolved / Math.max(1, rows.length)) * 100);
 
-    return {
-        conversationsToday,
-        resolved,
-        escalated,
-        resolutionRate,
-    };
+export function calculateDashboardMetrics(conversations: SupportTicket[]): DashboardMetrics {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  const isSameDay = (date1: Date, date2: Date) => {
+    if (!date1 || !date2) return false;
+    return fnsIsSameDay(date1, date2);
+  }
+
+  return {
+    conversationsToday: conversations.filter(c => 
+      isSameDay(c._timestamp, today)
+    ).length,
+    
+    openTickets: conversations.filter(c => 
+      ['Pending', 'In Progress', 'Waiting on Review'].includes(c.Status)
+    ).length,
+    
+    escalations: conversations.filter(c => 
+      c._isEscalated
+    ).length,
+    
+    avgResponseTime: (() => {
+      const processed = conversations.filter(c => c['Processed At']);
+      if (processed.length === 0) return 0;
+      
+      const totalMs = processed.reduce((sum, c) => {
+        const start = new Date(c.Timestamp);
+        const end = new Date(c['Processed At']);
+        return sum + (end.getTime() - start.getTime());
+      }, 0);
+      
+      return Math.round(totalMs / processed.length / 60000);
+    })(),
+    
+    approvalRate: (() => {
+      const withDecisions = conversations.filter(c => 
+        ['Approved', 'Declined', 'Needs Iteration'].includes(c['Approval Status'])
+      );
+      if (withDecisions.length === 0) return 0;
+      
+      const approved = withDecisions.filter(c => c['Approval Status'] === 'Approved');
+      return Math.round((approved.length / withDecisions.length) * 100);
+    })(),
+    
+    emailsSentToday: conversations.filter(c => 
+      c.Outcome === 'Email Sent' && c['Processed At'] &&
+      isSameDay(new Date(c['Processed At']), today)
+    ).length
+  };
 }

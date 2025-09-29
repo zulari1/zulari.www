@@ -14,10 +14,12 @@ export const VITE_WEBHOOK_RESEARCH_AI = 'https://zclari.app.n8n.cloud/webhook/Re
 
 // --- FINAL BLUEPRINT: Web AI Assistant ---
 export const VITE_WEB_AI_SHEET_ID = '1LPg0GNVL1WT9JzRj2-sx2PO3_c7p7y2wgxZlPWTPnos';
+export const VITE_WEB_AI_DEPLOYMENTS_CONFIGS_SHEET_ID = '1-NYIwgw8MBOS5tYo3sxHa3soGc6R4dijpjoWJhZCEDw';
 export const VITE_WEB_AI_TRAINING_DATA_SHEET_ID = '1DgpGyH3MapiErPsGd0NSS6jNJaGdYk9GUxzmrB3DJaQ';
 export const VITE_WEBHOOK_CHECK_ACCESS = 'https://zclari.app.n8n.cloud/webhook/check-access';
 export const VITE_WEBHOOK_WEB_AI_CONFIG = 'https://zclari.app.n8n.cloud/webhook/web-ai-config';
 export const VITE_WEBHOOK_WEB_AI_TRAIN = 'https://zclari.app.n8n.cloud/webhook/web-ai-train';
+export const VITE_WEBHOOK_WEB_AI_DEPLOY = 'https://zclari.app.n8n.cloud/webhook/web-ai-deploy';
 export const VITE_WEBHOOK_WEB_AI_ADD_DOC = 'https://zclari.app.n8n.cloud/webhook/training-doc';
 export const VITE_WEBHOOK_WEB_AI_SEARCH = 'https://zclari.app.n8n.cloud/webhook/web-ai-search'; // For live chat
 export const VITE_WEBHOOK_EMBED_REQUEST = 'https://zclari.app.n8n.cloud/webhook/Client_embedded_code';

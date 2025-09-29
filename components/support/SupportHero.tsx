@@ -1,7 +1,8 @@
 import React from 'react';
 import { ICONS } from '../../constants';
 import SupportKpiStrip from './SupportKpiStrip';
-import { SupportKpis } from '../../utils/supportUtils';
+// FIX: Corrected import from `supportUtils` to `types` where the interface is defined.
+import { SupportKpis } from '../../types';
 
 interface SupportHeroProps {
     kpis: SupportKpis | null;

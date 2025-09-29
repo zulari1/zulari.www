@@ -1,58 +1,67 @@
 // services/supportService.ts
 import { VITE_SUPPORT_SHEET_ID, VITE_GOOGLE_API_KEY, VITE_WEBHOOK_SUPPORT_AI_TRAIN } from '../env';
-import { SupportRow, GoogleSheetsValuesResponse } from '../types';
+import { GoogleSheetsValuesResponse, SupportSettingsPayload, FeedbackPayload, AIChatPayload, AIChatResponse } from '../types';
 
-const SHEET_ID = VITE_SUPPORT_SHEET_ID;
 const API_KEY = VITE_GOOGLE_API_KEY;
-const RANGE = 'Sheet1'; // As specified by user
 
-const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
+const NEW_SUPPORT_SHEET_URL = `https://sheets.googleapis.com/v4/spreadsheets/1cYaAG2upk2zp3OKrCQawZJO-L2tcjxGz8Y_LVCJ8lBI/values/Sheet1?key=${API_KEY}`;
+const BASE_WEBHOOK_URL = 'https://zclari.app.n8n.cloud/webhook';
 
-/**
- * Maps the raw array-of-arrays response from Google Sheets API into an array of objects
- * using the first row as headers.
- */
-export function mapValuesToObjects(values: string[][]): SupportRow[] {
-  if (!values || values.length < 2) return [];
-  const header = values[0];
-  return values.slice(1).map((row, i) => {
-    const obj: { [key: string]: any } = {};
-    header.forEach((key, colIndex) => {
-      obj[key] = row[colIndex] ?? "";
-    });
-    obj.rowNumber = i + 2; // Sheet index (header is at row 1)
-    return obj as SupportRow;
+
+async function postToSupportWebhook(endpoint: string, payload: any) {
+  const url = endpoint.startsWith('http') ? endpoint : `${BASE_WEBHOOK_URL}/${endpoint}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    mode: 'cors'
   });
+  if (!res.ok) {
+      const errorText = await res.text().catch(() => `Request failed with status ${res.status}`);
+      throw new Error(errorText);
+  }
+  const text = await res.text();
+  try {
+    const json = JSON.parse(text);
+    // n8n often wraps responses in an array, so we extract the first element
+    return Array.isArray(json) ? json[0] : json;
+  } catch (e) {
+    return { status: 'success', message: 'Action received' };
+  }
 }
 
+export const approveAndSend = (payload: any) => postToSupportWebhook('support/approve_send', payload);
+export const saveDraft = (payload: any) => postToSupportWebhook('support/save_draft', payload);
+export const escalateTicket = (payload: any) => postToSupportWebhook('support/escalate', payload);
+export const requestIteration = (payload: any) => postToSupportWebhook('support/needs_iteration', payload);
+
+// --- Advanced Features Webhooks ---
+export const saveSupportSettings = (payload: SupportSettingsPayload): Promise<{ status: string, configId: string }> => {
+    return postToSupportWebhook('custumor_settings', payload);
+};
+
+export const submitSupportFeedback = (payload: FeedbackPayload): Promise<{ status: string, feedbackId: string }> => {
+    return postToSupportWebhook('Custumor_feedback', payload);
+};
+
+export const chatWithSupportAI = (payload: AIChatPayload): Promise<AIChatResponse> => {
+    return postToSupportWebhook('ai_assistant_chat', payload);
+};
+
+
 /**
- * Fetches the raw data from the Google Sheet.
+ * Fetches the raw data from the Google Sheet specified in the new blueprint.
  */
-export async function fetchSheetData(): Promise<GoogleSheetsValuesResponse> {
-  const res = await fetch(url);
+export async function fetchSupportTickets(): Promise<GoogleSheetsValuesResponse> {
+  const res = await fetch(NEW_SUPPORT_SHEET_URL);
   if (!res.ok) {
     const errorBody = await res.json().catch(() => ({}));
-    const errorMessage = errorBody?.error?.message || `Google Sheets fetch failed with status ${res.status}. Check Sheet ID, tab name ('${RANGE}'), and API key permissions.`;
+    const errorMessage = errorBody?.error?.message || `Google Sheets fetch failed with status ${res.status}. Check Sheet ID, tab name, and API key permissions.`;
     throw new Error(errorMessage);
   }
-  const data = await res.json();
-  console.log("Raw sheet values:", data.values);
-  return data;
+  return res.json();
 }
 
-
-// Mocked write-actions as they require a backend proxy
-export async function patchRow(rowNumber: number, updates: Partial<SupportRow>) {
-  console.log(`PATCH /api/support/row/${rowNumber}`, { updates });
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return { status: 'ok', updatedRowNumber: rowNumber };
-}
-
-export async function postAction(payload: any) {
-  console.log(`POST /api/support/action`, payload);
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return { status: 'ok', message: 'action_received', emailQueued: true };
-}
 
 export async function trainSupport(payload: {
   userEmail: string;

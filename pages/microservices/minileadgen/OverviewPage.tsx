@@ -1,7 +1,4 @@
 
-
-
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, animate } from 'framer-motion';
@@ -84,7 +81,7 @@ const PipelineDiagram: React.FC = () => {
                         <div className={`relative w-12 h-12 bg-dark-bg rounded-full flex items-center justify-center ring-2 ${agent.ring}`}>
                             <div className={`absolute h-full w-full rounded-full animate-pulse-ring ${agent.color}`}></div>
                             {/* FIX: Cast props to 'any' to resolve TypeScript error with cloneElement and SVG props. */}
-                            {React.cloneElement(agent.icon, { className: `h-6 w-6 ${agent.color}` } as any)}
+                            {React.cloneElement(agent.icon, { className: `h-6 w-6 ${agent.color}` })}
                         </div>
                         <span className="text-xs font-semibold text-dark-text-secondary">{agent.name}</span>
                     </div>
@@ -103,7 +100,7 @@ const KpiCard: React.FC<{ label: string, value: number, icon: React.ReactElement
         <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-dark-text-secondary">{label}</p>
             {/* FIX: Cast props to 'any' to resolve TypeScript error with cloneElement and SVG props. */}
-            <span className="text-dark-text-secondary">{React.cloneElement(icon, {className: 'w-5 h-5'} as any)}</span>
+            <span className="text-dark-text-secondary">{React.cloneElement(icon, {className: 'w-5 h-5'})}</span>
         </div>
         <p className="text-3xl font-bold text-white"><AnimatedCounter value={value} /></p>
     </div>
