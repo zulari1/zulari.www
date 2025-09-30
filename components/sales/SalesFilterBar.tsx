@@ -8,9 +8,9 @@ interface SalesFilterBarProps {
 }
 
 const filters: { key: SalesFilter; label: string }[] = [
-    { key: 'TODAY', label: 'Today' },
     { key: 'PENDING', label: 'Pending' },
     { key: 'BOOKING', label: 'Booking Requests' },
+    { key: 'TODAY', label: 'Today' },
     { key: 'ALL', label: 'All' },
 ];
 

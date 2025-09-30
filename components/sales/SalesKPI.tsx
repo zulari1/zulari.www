@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { animate } from 'framer-motion';
 import { SalesKpis } from '../../types';
 
-const AnimatedCounter: React.FC<{ value: number, suffix?: string }> = ({ value, suffix = '' }) => {
+const AnimatedCounter: React.FC<{ value: number, prefix?: string, suffix?: string }> = ({ value, prefix = '', suffix = '' }) => {
     const [animatedValue, setAnimatedValue] = useState(0);
     useEffect(() => {
         const controls = animate(animatedValue, value, {
@@ -11,7 +11,7 @@ const AnimatedCounter: React.FC<{ value: number, suffix?: string }> = ({ value, 
         });
         return () => controls.stop();
     }, [value, animatedValue]);
-    return <span>{animatedValue.toLocaleString()}{suffix}</span>;
+    return <span>{prefix}{animatedValue.toLocaleString()}{suffix}</span>;
 };
 
 const KpiCard: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
@@ -23,17 +23,16 @@ const KpiCard: React.FC<{ label: string; children: React.ReactNode }> = ({ label
 
 const SalesKPI: React.FC<{ kpis: SalesKpis | null }> = ({ kpis }) => {
     if (!kpis) {
-        return <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[...Array(4)].map((_, i) => <div key={i} className="bg-dark-bg p-3 rounded-lg h-[68px] animate-pulse"></div>)}
+        return <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[...Array(3)].map((_, i) => <div key={i} className="bg-dark-bg p-3 rounded-lg h-[68px] animate-pulse"></div>)}
         </div>
     }
     
     return (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <KpiCard label="Conversations Today"><AnimatedCounter value={kpis.conversationsToday} /></KpiCard>
-            <KpiCard label="Meetings Booked (Today)"><AnimatedCounter value={kpis.meetingsBooked} /></KpiCard>
-            <KpiCard label="Booking Rate"><AnimatedCounter value={kpis.bookingRate} suffix="%" /></KpiCard>
-            <KpiCard label="Escalations"><AnimatedCounter value={kpis.escalations} /></KpiCard>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <KpiCard label="Closed Revenue (by AI)"><AnimatedCounter value={kpis.closedRevenue} prefix="$" /></KpiCard>
+            <KpiCard label="Meetings Booked"><AnimatedCounter value={kpis.meetingsBooked} /></KpiCard>
+            <KpiCard label="Leads Converted"><AnimatedCounter value={kpis.leadsConverted} /></KpiCard>
         </div>
     );
 };

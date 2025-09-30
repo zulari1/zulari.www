@@ -10,17 +10,13 @@ interface SalesCardProps {
 const timeAgo = (date: Date | null | undefined): string => {
     if (!date) return '';
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
-    let interval = seconds / 31536000;
-    if (interval > 1) return Math.floor(interval) + "y ago";
-    interval = seconds / 2592000;
-    if (interval > 1) return Math.floor(interval) + "mo ago";
-    interval = seconds / 86400;
-    if (interval > 1) return Math.floor(interval) + "d ago";
-    interval = seconds / 3600;
-    if (interval > 1) return Math.floor(interval) + "h ago";
-    interval = seconds / 60;
-    if (interval > 1) return Math.floor(interval) + "m ago";
-    return "just now";
+    if (seconds < 60) return "just now";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
 };
 
 const SalesCard: React.FC<SalesCardProps> = ({ row, onSelectRow }) => {
@@ -49,7 +45,7 @@ const SalesCard: React.FC<SalesCardProps> = ({ row, onSelectRow }) => {
             </div>
             <div className="border-t border-dark-border mt-3 pt-2 flex justify-between items-center text-xs text-dark-text-secondary/60 font-mono">
                 <span>#{row.rowNumber} • {row["Message ID"]}</span>
-                <span>{timeAgo(row.processedAt)}</span>
+                <span>{timeAgo(row.processedAt || row.submitted)}</span>
             </div>
         </button>
     );

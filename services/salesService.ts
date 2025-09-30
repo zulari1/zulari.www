@@ -1,21 +1,40 @@
 // services/salesService.ts
 import { SalesRow, SalesFilter, GoogleSheetsValuesResponse } from '../types';
 import { mapValuesToObjects } from '../utils/salesUtils';
+import { 
+    VITE_SHEET_ID, 
+    VITE_GOOGLE_API_KEY, 
+    VITE_WEBHOOK_SALES_APPROVE_SEND,
+    VITE_WEBHOOK_SALES_SAVE_DRAFT,
+    VITE_WEBHOOK_SALES_ESCALATE,
+    VITE_WEBHOOK_SALES_BOOK_MEETING,
+    VITE_WEBHOOK_SALES_SETTINGS
+} from '../env';
 
-const SHEET_ID = "1ZlvyF1V3r18DcvK-Icpz7NbixaWFsKC4Xe5KfVrm9rk";
-const API_KEY = "AIzaSyA4XlhMDF3Ft4eLzIf1K1B_mNB9cxSbpB0";
 const RANGE = "Sheet1";
+const API_URL = `https://sheets.googleapis.com/v4/spreadsheets/${VITE_SHEET_ID}/values/${RANGE}?key=${VITE_GOOGLE_API_KEY}`;
 
-const API_URL = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
+
+async function postJson(url: string, payload: any) {
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        mode: 'cors',
+        body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+        const text = await res.text().catch(() => 'No response body');
+        throw new Error(`Request failed ${res.status}: ${text}`);
+    }
+    const text = await res.text();
+    return text ? JSON.parse(text) : { status: 'ok' };
+}
 
 
 /**
  * Fetches and processes live data from the Google Sheet.
- * Note: Client-side filtering is now handled in the component.
  */
 export async function fetchRows(): Promise<SalesRow[]> {
-  console.log('Fetching live data from Google Sheets...');
-  
   const res = await fetch(API_URL);
   if (!res.ok) {
     const errorBody = await res.json().catch(() => ({}));
@@ -32,17 +51,20 @@ export async function fetchRows(): Promise<SalesRow[]> {
   return mapValuesToObjects(data.values);
 }
 
-// Mocked write-actions as they require a backend proxy
+// --- New Webhook Functions from Blueprint ---
+
+export const approveAndSend = (payload: any): Promise<any> => postJson(VITE_WEBHOOK_SALES_APPROVE_SEND, payload);
+export const saveDraft = (payload: any): Promise<any> => postJson(VITE_WEBHOOK_SALES_SAVE_DRAFT, payload);
+export const escalate = (payload: any): Promise<any> => postJson(VITE_WEBHOOK_SALES_ESCALATE, payload);
+export const bookMeeting = (payload: any): Promise<any> => postJson(VITE_WEBHOOK_SALES_BOOK_MEETING, payload);
+export const saveSettings = (payload: any): Promise<any> => postJson(VITE_WEBHOOK_SALES_SETTINGS, payload);
+
+
+// Mocked write-actions for compatibility if needed elsewhere
 export async function patchRow(rowNumber: number, updates: Partial<SalesRow>): Promise<{ status: string, updatedRowNumber: number }> {
   console.log(`Mock PATCH /api/sales/row/${rowNumber}`, { updates });
   await new Promise(resolve => setTimeout(resolve, 500));
   return { status: "ok", updatedRowNumber: rowNumber };
-}
-
-export async function saveSettings(payload: any): Promise<{ status: string, message: string, savedAt: string }> {
-  console.log('Mock POST /api/sales/settings', payload);
-  await new Promise(resolve => setTimeout(resolve, 600));
-  return { status: "ok", message: "settings_saved", savedAt: new Date().toISOString() };
 }
 
 export async function train(payload: any): Promise<{ status: string, jobId: string, estimatedSeconds: number }> {

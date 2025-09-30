@@ -29,7 +29,6 @@ const ReplierKPI: React.FC<{ kpis: ReplierKpis | null }> = ({ kpis }) => {
                 <AnimatedCounter value={kpis.conversationsToday} />
             </KpiCard>
             <KpiCard label="AI Success %">
-                {/* FIX: Corrected property access from `aiSuccessPercent` to `aiSuccessRate` to match the type definition. */}
                 <AnimatedCounter value={kpis.aiSuccessRate} suffix="%" />
             </KpiCard>
             <KpiCard label="Booked Meetings">

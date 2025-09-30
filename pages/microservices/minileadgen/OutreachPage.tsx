@@ -1,4 +1,7 @@
 
+
+
+
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import * as n8n from '../../../services/n8nService';
 import { Lead } from '../../../types';
@@ -6,7 +9,8 @@ import ActionNotification from '../../../components/ActionNotification';
 import { ICONS } from '../../../constants';
 
 const HowItWorksHeader: React.FC = () => {
-    const steps = [
+    // FIX: Explicitly type the `icon` property as `React.ReactElement`.
+    const steps: { icon: React.ReactElement; title: string; desc: string }[] = [
         { icon: ICONS.email, title: "Load Emails", desc: "Personalized emails are automatically loaded." },
         { icon: ICONS.calendar, title: "Choose Schedule", desc: "Set your campaign rules and start date." },
         { icon: ICONS.rocket, title: "Start Campaign", desc: "AI sends emails on autopilot based on your settings." },
@@ -21,7 +25,8 @@ const HowItWorksHeader: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
                 {steps.map(step => (
                     <div key={step.title} className="bg-dark-bg p-4 rounded-lg flex items-start gap-3">
-                        <span className="text-brand-accent mt-1">{React.cloneElement(step.icon, { className: 'w-5 h-5' })}</span>
+                        {/* FIX: Cast props to 'any' to resolve TypeScript error with cloneElement and SVG props. */}
+                        <span className="text-brand-accent mt-1">{React.cloneElement(step.icon, { className: 'w-5 h-5' } as any)}</span>
                         <div>
                             <h3 className="font-semibold text-white">{step.title}</h3>
                             <p className="text-xs text-dark-text-secondary mt-1">{step.desc}</p>

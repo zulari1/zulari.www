@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Route, Routes, Navigate, useNavigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
@@ -11,6 +10,7 @@ import ServicesHubPage from './pages/services/ServicesHubPage';
 import ResearchAgentPage from './pages/ResearchAgentPage';
 import WebAssistantServicePage from './pages/WebAssistantServicePage';
 import CustomerSupportAIDashboardPage from './pages/CustomerSupportAIDashboardPage';
+import ConversationHistoryPage from './pages/support/ConversationHistoryPage'; // Import new page
 import SalesAIAgentDashboardPage from './pages/SalesAIAgentDashboardPage';
 import LeadGenerationPage from './pages/leadgen'; // New Core Lead Gen
 import CustomSolutionPage from './pages/CustomSolutionPage';
@@ -50,8 +50,12 @@ import AiAssistant from './components/AiAssistant';
 import { useAuth } from './hooks/useAuth';
 import { IntegrationsProvider } from './hooks/useIntegrations';
 
-// FIX: Redefined ProtectedRoute to use a standard function component signature to resolve the type error.
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+// FIX: Redefined ProtectedRoute to use an explicit interface for its props, which is a more robust way to handle component typing and can resolve ambiguous type errors.
+interface ProtectedRouteProps {
+    children: React.ReactNode;
+}
+// FIX: Changed ProtectedRoute from a React.FC to a standard functional component to avoid potential typing issues with props.
+const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     const { loading, hasAccess } = useAuth();
     const navigate = useNavigate();
     const [ready, setReady] = useState(false);
@@ -79,7 +83,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return <>{children}</>;
 };
 
-const MainLayout: React.FC<{children?: React.ReactNode}> = () => {
+// FIX: Converted MainLayout from React.FC to a standard functional component to avoid potential typing issues with routers.
+const MainLayout = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (
@@ -97,6 +102,7 @@ const MainLayout: React.FC<{children?: React.ReactNode}> = () => {
                             <Route path="/services/research-ai" element={<ResearchAgentPage />} />
                             <Route path="/services/web-ai" element={<WebAssistantServicePage />} />
                             <Route path="/services/support-ai" element={<CustomerSupportAIDashboardPage />} />
+                            <Route path="/services/support-ai/history" element={<ConversationHistoryPage />} />
                             <Route path="/services/sales-ai" element={<SalesAIAgentDashboardPage />} />
                             <Route path="/services/lead-gen" element={<Navigate to="/leadgen" />} />
                             <Route path="/services/custom-solution" element={<CustomSolutionPage />} />

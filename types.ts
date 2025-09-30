@@ -46,6 +46,7 @@ export interface WebAIConversationLog {
   session_id: string;
   user_message: string;
   bot_reply_text: string;
+  bot_reply_html?: string;
   intent: string;
   meeting_date?: string;
   meeting_topic?: string;
@@ -53,6 +54,7 @@ export interface WebAIConversationLog {
   escalation_notes?: string;
   bot_latency_ms?: string;
   message_type?: 'user' | 'bot' | 'system';
+  metadata_json?: string;
 }
 
 // Alias for backwards compatibility where needed
@@ -88,7 +90,8 @@ export interface WebAIBotConfig {
 
 // Payload for the settings form, as per the new blueprint
 export interface WebAISettingsPayload {
-  tone: 'formal' | 'casual' | 'empathetic' | 'professional';
+  // FIX: Widened the `tone` type to match `WebAIBotConfig.default_response_style` to prevent type errors when loading settings.
+  tone: 'concise' | 'sales' | 'friendly' | 'formal' | 'casual' | 'empathetic' | 'professional';
   escalation_rules: string;
   greeting: string;
   fallback: string;
@@ -384,6 +387,30 @@ export interface KnowledgeBaseStats {
   documentCount: number;
 }
 
+// --- New for Conversation History Page ---
+export interface ConversationThread {
+  threadId: string;
+  customerName: string;
+  customerEmail: string;
+  topic: string;
+  status: string;
+  escalated: boolean;
+  startTime: Date | null;
+  messages: SupportTicket[];
+  totalMessages: number;
+  duration: number; // in ms
+}
+
+export interface ConversationAnalytics {
+    totalConversations: number;
+    todaysConversations: number;
+    avgMessagesPerThread: string;
+    aiResolutionRate: number;
+    avgResponseTime: number; // in seconds
+    escalationRate: number;
+}
+// --- End new types ---
+
 // --- New Sales AI Agent Types (Blueprint-Compliant) ---
 export type SalesFilter = 'TODAY' | 'PENDING' | 'BOOKING' | 'ALL';
 
@@ -422,10 +449,9 @@ export interface SalesRow {
 }
 
 export interface SalesKpis {
-  conversationsToday: number;
+  closedRevenue: number;
   meetingsBooked: number;
-  escalations: number;
-  bookingRate: number;
+  leadsConverted: number;
 }
 
 export interface SalesEscalationRules {

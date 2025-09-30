@@ -11,11 +11,45 @@ interface SalesHeroProps {
     onSync: () => void;
     onOpenSettings: () => void;
     onOpenTraining: () => void;
+    syncStatus: { status: string; lastSync: Date | null };
 }
 
-const SalesHero: React.FC<SalesHeroProps> = ({ kpis, isLoading, isPaused, onPauseToggle, onSync, onOpenSettings, onOpenTraining }) => {
+const SyncStatusLine: React.FC<{ syncStatus: SalesHeroProps['syncStatus'] }> = ({ syncStatus }) => {
+    const { status, lastSync } = syncStatus;
+
+    const statusMap = {
+        synced: { text: "Active", color: "text-green-400", pulse: "bg-green-500" },
+        syncing: { text: "Syncing...", color: "text-amber-400", pulse: "bg-amber-500" },
+        delayed: { text: "Delayed", color: "text-amber-400", pulse: "bg-amber-500" },
+        error: { text: "Sync Error", color: "text-red-400", pulse: "bg-red-500" },
+        paused: { text: "Paused", color: "text-gray-400", pulse: "bg-gray-500" },
+    };
+
+    const currentStatus = statusMap[status as keyof typeof statusMap] || statusMap.paused;
+    const lastSyncText = lastSync ? `${Math.round((Date.now() - lastSync.getTime()) / 1000)}s ago` : 'N/A';
+    
+    return (
+        <div className="flex items-center gap-2 text-xs text-dark-text-secondary font-mono">
+            <span className={`relative flex h-2 w-2`}>
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${currentStatus.pulse} opacity-75`}></span>
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${currentStatus.pulse}`}></span>
+            </span>
+            <span className={currentStatus.color}>{currentStatus.text}</span>
+            <span>•</span>
+            <span>Last sync: {lastSyncText}</span>
+        </div>
+    );
+};
+
+
+const SalesHero: React.FC<SalesHeroProps> = ({ kpis, isLoading, isPaused, onPauseToggle, onSync, onOpenSettings, onOpenTraining, syncStatus }) => {
     return (
         <div className="bg-dark-card border border-dark-border rounded-xl p-6 space-y-4">
+             {(syncStatus.status === 'delayed' || syncStatus.status === 'error') && (
+                <div className="p-2 bg-amber-900/50 text-amber-300 text-xs rounded-lg border border-amber-700 text-center">
+                    ⚠️ {syncStatus.status === 'delayed' ? 'Live sync delayed due to API limits' : 'Sync error'} — showing last updated data from {syncStatus.lastSync?.toLocaleTimeString()}.
+                </div>
+            )}
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-white flex items-center gap-3">
@@ -23,6 +57,7 @@ const SalesHero: React.FC<SalesHeroProps> = ({ kpis, isLoading, isPaused, onPaus
                         <span>Sales AI Agent</span>
                     </h1>
                     <p className="text-dark-text-secondary mt-1">Book demos while you sleep. AI analyzes incoming requests and prepares responses.</p>
+                     <div className="mt-2"><SyncStatusLine syncStatus={syncStatus} /></div>
                 </div>
                  <div className="flex items-center gap-2 flex-wrap">
                     <button onClick={onPauseToggle} className="bg-dark-bg hover:bg-dark-border px-3 py-1.5 text-sm rounded-lg flex items-center gap-2" title={isPaused ? "Resume polling" : "Pause polling"}>

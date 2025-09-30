@@ -9,7 +9,8 @@ const MotionDiv = motion.div as any;
 interface SupportSettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: () => void;
+    // FIX: Changed onSave signature to pass settings object back, resolving a type error.
+    onSave: (settings: Omit<SupportSettingsPayload, 'userId'>) => void;
 }
 
 const Toggle: React.FC<{ enabled: boolean; onChange: (e: boolean) => void; label: string; }> = ({ enabled, onChange, label }) => (
@@ -39,8 +40,10 @@ const SupportSettingsModal: React.FC<SupportSettingsModalProps> = ({ isOpen, onC
     const handleSave = async () => {
         setIsSaving(true);
         try {
+            // FIX: Corrected function name to saveSupportSettings and payload key to userId.
             await supportService.saveSupportSettings({ ...settings, userId: 'demo-user-123' });
-            onSave();
+            // FIX: Pass the settings object to the onSave callback to match the updated prop type.
+            onSave(settings);
             onClose();
         } catch (error) {
             console.error("Failed to save settings", error);

@@ -11,17 +11,16 @@ interface SalesSettingsModalProps {
 
 const SalesSettingsModal: React.FC<SalesSettingsModalProps> = ({ isOpen, onClose }) => {
     const [settings, setSettings] = useState({
-        autoBookIfAvailable: true,
-        defaultMeetingLengthMins: 30,
-        timeZone: "Europe/Berlin",
-        confidenceThreshold: 85
+        auto_approve: { email_types: ["Info","Pricing"], approval_confidence_threshold: 0.7 },
+        default_tone: "high-conversion",
+        escalation_rules: { escalate_on: ["Partnership","Enterprise"], escalate_when_confidence_below: 0.6 }
     });
     const [isSaving, setIsSaving] = useState(false);
 
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            await salesService.saveSettings({ ...settings, action: 'save_settings', userEmail: 'demo@zulari.app' });
+            await salesService.saveSettings({ user_email: 'demo@zulari.app', ...settings });
             onClose();
         } catch (e: any) {
             console.error("Save settings failed:", e);
@@ -34,21 +33,29 @@ const SalesSettingsModal: React.FC<SalesSettingsModalProps> = ({ isOpen, onClose
         <AnimatePresence>
             {isOpen && (
                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                     <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+                     <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60" onClick={onClose} />
                      <MotionDiv initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative w-full max-w-md bg-dark-card rounded-xl border border-dark-border z-50 p-6">
                         <h2 className="text-xl font-bold text-white mb-4">Sales AI Settings</h2>
                         <div className="space-y-4 text-sm">
                             <label className="flex items-center justify-between">
-                                <span>Auto-book if calendar available</span>
-                                <input type="checkbox" checked={settings.autoBookIfAvailable} onChange={e => setSettings(s => ({...s, autoBookIfAvailable: e.target.checked}))} className="h-4 w-4 rounded text-brand-primary" />
+                                <span>Auto-approve "Info" requests</span>
+                                <input type="checkbox" checked={settings.auto_approve.email_types.includes("Info")} onChange={e => {
+                                    const types = settings.auto_approve.email_types;
+                                    const newTypes = e.target.checked ? [...types, "Info"] : types.filter(t => t !== "Info");
+                                    setSettings(s => ({...s, auto_approve: {...s.auto_approve, email_types: newTypes}}));
+                                }} />
                             </label>
                             <label className="flex items-center justify-between">
-                                <span>Default Meeting Length (mins)</span>
-                                <input type="number" value={settings.defaultMeetingLengthMins} onChange={e => setSettings(s => ({...s, defaultMeetingLengthMins: +e.target.value}))} className="w-20 bg-dark-bg p-1 rounded border border-dark-border" />
+                                <span>Default Tone</span>
+                                <select value={settings.default_tone} onChange={e => setSettings(s => ({...s, default_tone: e.target.value}))} className="bg-dark-bg p-1 rounded border border-dark-border">
+                                    <option>high-conversion</option>
+                                    <option>empathetic</option>
+                                    <option>formal</option>
+                                </select>
                             </label>
                              <label className="flex items-center justify-between">
                                 <span>Confidence Threshold (%)</span>
-                                <input type="number" min="50" max="100" value={settings.confidenceThreshold} onChange={e => setSettings(s => ({...s, confidenceThreshold: +e.target.value}))} className="w-20 bg-dark-bg p-1 rounded border border-dark-border" />
+                                <input type="number" min="50" max="100" value={settings.auto_approve.approval_confidence_threshold * 100} onChange={e => setSettings(s => ({...s, auto_approve: {...s.auto_approve, approval_confidence_threshold: +e.target.value / 100}}))} className="w-20 bg-dark-bg p-1 rounded border border-dark-border" />
                             </label>
                         </div>
                         <div className="flex justify-end gap-2 mt-6">
